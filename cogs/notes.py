@@ -19,6 +19,99 @@ SUBJECT_CHANNELS = {
 }
 
 
+class NotePaginationView(discord.ui.View):
+    def __init__(self, notes, subject=None, keyword=None, user=None):
+        super().__init__(timeout=300)
+
+        self.notes = notes
+        self.current_page = 0
+        self.notes_per_page = 5
+        self.total_pages = (len(notes) - 1) // self.notes_per_page + 1
+
+        self.subject = subject
+        self.keyword = keyword
+        self.user = user
+
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.previous_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page == self.total_pages - 1
+
+    def create_embed(self):
+        embed = discord.Embed(
+            title="📚 Notes Index",
+            color=discord.Color.purple(),
+            description=f"Found {len(self.notes)} notes",
+        )
+
+        filters = []
+        if self.subject:
+            filters.append(f"Subject: `{self.subject}`")
+        if self.keyword:
+            filters.append(f"Keyword: `{self.keyword}`")
+        if self.user:
+            filters.append(f"User: `{self.user.display_name}`")
+
+        if filters:
+            embed.add_field(
+                name="🔍 Active Filters", value=" • ".join(filters), inline=False
+            )
+
+        start_idx = self.current_page * self.notes_per_page
+        end_idx = start_idx + self.notes_per_page
+        page_notes = self.notes[start_idx:end_idx]
+
+        for i, note in enumerate(page_notes, start=start_idx + 1):
+            note_id, title, file_url, timestamp, tags, user_id = note
+            display_title = title[:50] + "..." if len(title) > 50 else title
+
+            is_link = file_url.startswith("http") and not file_url.startswith(
+                "https://cdn.discordapp.com"
+            )
+            icon = "🔗" if is_link else "📄"
+
+            embed.add_field(
+                name=f"{icon} {display_title}",
+                value=f"`{tags.upper()}` • [Open]({file_url}) • ID: `{note_id}`",
+                inline=False,
+            )
+
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages}")
+        return embed
+
+    @discord.ui.button(label="◀ Previous", style=discord.ButtonStyle.secondary)
+    async def previous_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def next_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.primary)
+    async def refresh_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        embed = self.create_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+
 class NotesCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -168,7 +261,6 @@ class NotesCog(commands.Cog):
         await ctx.defer(ephemeral=True)
 
         query = "SELECT id, title, file_url, timestamp, tags, user_id FROM notes"
-
         params = []
         filters = []
 
@@ -192,34 +284,18 @@ class NotesCog(commands.Cog):
         try:
             self.cursor.execute(query, tuple(params))
             notes = self.cursor.fetchall()
-
         except Exception as e:
             await ctx.followup.send(f"Database Error : {e}", ephemeral=True)
-
             return
 
         if not notes:
             await ctx.followup.send("No Notes Found.", ephemeral=True)
             return
 
-        embed = discord.Embed(title="📚 Notes Index", color=discord.Color.purple())
-        for note in notes[:10]:
-            note_id, title, file_url, timestamp, tags, user_id = note
-            is_link = file_url.startswith("http") and (
-                "youtube.com" in file_url
-                or "drive.google.com" in file_url
-                or "youtu.be" in file_url
-            )
-            icon = "🔗" if is_link else "📄"
-            embed.add_field(
-                name=f"{icon} {title} (ID : {note_id})",
-                value=f"Subject : `{tags}`\n[Open]({file_url})\nUploaded : `{timestamp[:10]}`\nBy : <@{user_id}>",
-                inline=False,
-            )
-        embed.set_footer(
-            text="Use /note_index With A Subject, Keyword, Or User To Search More Notes!"
-        )
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        view = NotePaginationView(notes, subject, keyword, user)
+        embed = view.create_embed()
+
+        await ctx.followup.send(embed=embed, view=view, ephemeral=True)
 
     @slash_command(
         name="note_delete",
