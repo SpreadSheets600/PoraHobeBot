@@ -1,0 +1,408 @@
+import os
+import dotenv
+import discord
+import datetime
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    send_from_directory,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    session,
+)
+from werkzeug.utils import secure_filename
+import threading
+import requests
+import sqlite3
+
+UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {
+    "pdf",
+    "png",
+    "jpg",
+    "jpeg",
+    "docx",
+    "pptx",
+    "txt",
+    "zip",
+    "rar",
+    "csv",
+    "xlsx",
+    "mp4",
+    "mp3",
+}
+
+SUBJECT_CHANNELS = {
+    "c": 1387809784031608994,
+    "dsa": 1387809822279208990,
+    "math": 1387810459930988687,
+    "python": 1387809701865197689,
+    "economics": 1387810261527691344,
+    "electronics": 1387810558153068594,
+    "computer organization": 1387810527983567040,
+}
+
+dotenv.load_dotenv()
+TOKEN = os.getenv("TOKEN")
+
+intents = discord.Intents.all()
+bot = discord.Bot(intents=intents)
+
+
+app = Flask(__name__, template_folder="templates")
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
+
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://0.0.0.0:5000/callback")
+DISCORD_OAUTH_AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
+DISCORD_OAUTH_TOKEN_URL = "https://discord.com/api/oauth2/token"
+DISCORD_API_USER_URL = "https://discord.com/api/users/@me"
+
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def save_note_to_db(title, file_url, channel_id, user_id, subject):
+    try:
+        conn = sqlite3.connect("notes.db")
+        cursor = conn.cursor()
+        import datetime
+
+        timestamp = datetime.datetime.utcnow().isoformat()
+        cursor.execute(
+            """
+            INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (title, "", file_url, str(channel_id), str(user_id), timestamp, subject),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[Flask] Failed to save note to DB: {e}")
+
+
+@app.route("/", methods=["GET", "POST"])
+def upload_file():
+    if not session.get("user_id"):
+        flash("Please Log In With Discord To Upload Notes!", "error")
+        return redirect(url_for("login"))
+
+    user_id = session.get("user_id")
+    username = session.get("username")
+    avatar_url = session.get("avatar_url")
+
+    if request.method == "POST":
+        subject = request.form.get("subject", "").strip().lower()
+        upload_type = request.form.get("upload_type")
+        file = request.files.get("file")
+        link = request.form.get("link", "").strip()
+
+        if not subject or subject not in SUBJECT_CHANNELS:
+            flash("Invalid Or Missing Subject.", "error")
+            return redirect(request.url)
+
+        if upload_type == "file":
+            if not file or file.filename == "":
+                flash("No File Selected.", "error")
+                return redirect(request.url)
+
+            if not allowed_file(file.filename):
+                flash("File Type Not Allowed.", "error")
+                return redirect(request.url)
+
+            if file.content_length and file.content_length > 100 * 1024 * 1024:
+                flash("File Too Large (Max 100MB).", "error")
+                return redirect(request.url)
+
+            filesize = file.content_length or 0
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
+            try:
+                file.save(save_path)
+            except Exception as e:
+                flash(f"Failed to save file: {e}", "error")
+                return redirect(request.url)
+
+            file_url = url_for("uploaded_file", filename=filename, _external=True)
+
+            try:
+                requests.post(
+                    "http://localhost:5000/api/upload",
+                    json={
+                        "subject": subject,
+                        "user_id": user_id,
+                        "file_url": file_url,
+                        "title": filename,
+                        "filesize": filesize,
+                    },
+                )
+
+            except Exception as e:
+                flash(f"Failed To Notify Via Discord Bot : {e}", "error")
+
+            save_note_to_db(
+                filename, file_url, SUBJECT_CHANNELS[subject], user_id, subject
+            )
+
+            flash("File Uploaded And Will Be Sent To Discord!", "success")
+            return redirect(request.url)
+
+        elif upload_type == "link":
+            if not link:
+                flash("No Link Provided.", "error")
+                return redirect(request.url)
+
+            try:
+                requests.post(
+                    "http://localhost:5000/api/upload",
+                    json={
+                        "subject": subject,
+                        "user_id": user_id,
+                        "file_url": link,
+                        "title": link,
+                        "filesize": 0,
+                    },
+                )
+            except Exception as e:
+                flash(f"Failed To Notify Via Discord Bot : {e}", "error")
+
+            save_note_to_db(link, link, SUBJECT_CHANNELS[subject], user_id, subject)
+            flash("Link Uploaded And Will Be Sent To Discord!", "success")
+
+            return redirect(request.url)
+
+        else:
+            flash("Invalid Upload Type.", "error")
+            return redirect(request.url)
+
+    subjects = list(SUBJECT_CHANNELS.keys())
+    return render_template(
+        "upload.html",
+        subjects=subjects,
+        user_id=user_id,
+        username=username,
+        avatar_url=avatar_url,
+    )
+
+
+@app.route("/login")
+def login():
+    discord_auth_url = (
+        f"{DISCORD_OAUTH_AUTHORIZE_URL}?client_id={DISCORD_CLIENT_ID}"
+        f"&redirect_uri={DISCORD_REDIRECT_URI}"
+        f"&response_type=code&scope=identify"
+    )
+    return redirect(discord_auth_url)
+
+
+@app.route("/callback")
+def callback():
+    code = request.args.get("code")
+
+    if not code:
+        flash("No Code Provided From Discord!", "error")
+        return redirect(url_for("upload_file"))
+
+    data = {
+        "client_id": DISCORD_CLIENT_ID,
+        "client_secret": DISCORD_CLIENT_SECRET,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": DISCORD_REDIRECT_URI,
+        "scope": "identify",
+    }
+
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    token_resp = requests.post(DISCORD_OAUTH_TOKEN_URL, data=data, headers=headers)
+
+    if token_resp.status_code != 200:
+        flash("Failed To Authenticate With Discord!", "error")
+        return redirect(url_for("upload_file"))
+
+    token_json = token_resp.json()
+    access_token = token_json.get("access_token")
+
+    if not access_token:
+        flash("No Access Token From Discord!", "error")
+        return redirect(url_for("upload_file"))
+
+    user_headers = {"Authorization": f"Bearer {access_token}"}
+    user_resp = requests.get(DISCORD_API_USER_URL, headers=user_headers)
+
+    if user_resp.status_code != 200:
+        flash("Failed to get user info from Discord.", "error")
+        return redirect(url_for("upload_file"))
+
+    user_json = user_resp.json()
+
+    session["user_id"] = user_json["id"]
+    session["username"] = f"{user_json['username']}#{user_json['discriminator']}"
+    session["avatar_url"] = (
+        f"https://cdn.discordapp.com/avatars/{user_json['id']}/{user_json['avatar']}.png"
+        if user_json.get("avatar")
+        else None
+    )
+
+    flash(f"Logged In As {session['username']}")
+    return redirect(url_for("upload_file"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("Logged Out")
+    return redirect(url_for("upload_file"))
+
+
+@app.route("/uploads/<filename>")
+def uploaded_file(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.route("/api/upload", methods=["POST"])
+def api_upload():
+    data = request.json
+
+    subject = data.get("subject")
+    user_id = data.get("user_id")
+    file_title = data.get("title")
+
+    file_url = data.get("file_url")
+    file_size = data.get("filesize", 0)
+
+    channel_id = SUBJECT_CHANNELS.get(subject)
+
+    if not channel_id:
+        return jsonify({"error": "Invalid Subject"}), 400
+
+    async def send_note():
+        channel = bot.get_channel(channel_id)
+
+        if channel:
+            embed = discord.Embed(
+                title=f"Note : {file_title}",
+                description=f"Uploaded For **{subject.title()}**",
+                color=discord.Color.blue(),
+            )
+
+            embed.add_field(name="File Size", value=f"{file_size}")
+
+            embed.add_field(
+                name="Uploaded By",
+                value=(
+                    f"<@{user_id}>"
+                    if user_id
+                    else "Unknown User ( Nirghat Subhrajit XD )"
+                ),
+            )
+
+            await channel.send(embed=embed, view=DownloadButton(download_link=file_url))
+
+    bot.loop.create_task(send_note())
+    return jsonify({"status": "ok"})
+
+
+@app.route("/notes", methods=["GET"])
+def view_notes():
+    q = request.args.get("q", "").strip()
+    tag = request.args.get("tag", "").strip().lower()
+    conn = sqlite3.connect("notes.db")
+
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    query = "SELECT * FROM notes"
+
+    params = []
+    filters = []
+
+    if tag:
+        filters.append("tags = ?")
+        params.append(tag)
+
+    if q:
+        filters.append("title LIKE ?")
+        params.append(f"%{q}%")
+
+    if filters:
+        query += " WHERE " + " AND ".join(filters)
+
+    query += " ORDER BY timestamp DESC"
+
+    cursor.execute(query, params)
+    notes = cursor.fetchall()
+    conn.close()
+
+    notes = [dict(note) for note in notes]
+    subjects = list(SUBJECT_CHANNELS.keys())
+
+    return render_template(
+        "notes_list.html",
+        notes=notes,
+        subjects=subjects,
+        request=request,
+    )
+
+
+def run_flask():
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+
+
+@bot.event
+async def on_ready():
+
+    print("--------------------------------")
+    print("----- + LOADED PoraHobe  + -----")
+    print("--------------------------------")
+
+    await bot.change_presence(activity=discord.Game(name="With Life"))
+
+    start_time = datetime.datetime.now()
+    bot.start_time = start_time
+
+    print("----- + LOADING COMMANDS + -----")
+    print("--------------------------------")
+
+    for command in bot.walk_application_commands():
+        print(f"----- + Loaded : {command.name} ")
+
+    print("--------------------------------")
+    print(f"---- + Loaded : {len(list(bot.walk_application_commands()))}  Commands + -")
+    print("--------------------------------")
+
+    print("------- + LOADING COGS + -------")
+    print(f"----- + Loaded : {len(bot.cogs)} Cogs + ------")
+    print("--------------------------------")
+
+    print("----- + Database Initialized + -----")
+
+
+bot.load_extension("cogs.notes")
+
+
+class DownloadButton(discord.ui.View):
+    def __init__(self, download_link: str):
+        super().__init__(timeout=None)
+        self.download_link = download_link
+
+        button_download = discord.ui.Button(
+            label="Download", style=discord.ButtonStyle.url, url=self.download_link
+        )
+        self.add_item(button_download)
+
+
+if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
+    bot.run(TOKEN)
