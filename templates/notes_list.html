@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-8">
+    <div class="w-full max-w-3xl bg-white rounded-lg shadow-xl p-6 border border-base-200">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+            <h2 class="text-2xl font-bold text-center text-indigo-600">All Notes</h2>
+            <a href="/" class="ml-4 bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm">Upload Notes</a>
+        </div>
+        {% if username %}
+        <div class="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded border border-base-200">
+            {% if avatar_url %}
+                <img src="{{ avatar_url }}" alt="avatar" class="w-8 h-8 rounded-full" />
+            {% endif %}
+            <span class="font-semibold">{{ username }}</span>
+            <span class="text-xs text-gray-400">({{ user_id }})</span>
+        </div>
+        {% endif %}
+        <form method="get" class="flex flex-col md:flex-row gap-2 mb-6 items-center justify-between">
+            <input type="text" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search by title..." class="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <select name="tag" class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <option value="">All Subjects</option>
+                {% for subject in subjects %}
+                <option value="{{ subject }}" {% if request.args.get('tag') == subject %}selected{% endif %}>{{ subject.title() }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">Search</button>
+        </form>
+        <div>
+            {% if notes %}
+            <ul class="divide-y divide-gray-200">
+                {% for note in notes %}
+                <li class="py-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <div class="font-semibold text-indigo-700">{{ note['title'] }}</div>
+                        <div class="text-sm text-gray-500">Subject: <span class="font-medium">{{ note['tags'] }}</span></div>
+                        <div class="text-xs text-gray-400">Uploaded: {{ note['timestamp'][:19].replace('T', ' ') }}</div>
+                        <div class="text-xs text-gray-400">By: {{ note['user_id'] }}</div>
+                    </div>
+                    <div class="mt-2 md:mt-0 flex gap-2 items-center">
+                        <a href="{{ note['file_url'] }}" target="_blank" class="bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm">Open</a>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="text-center text-gray-500">No Notes Found.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
