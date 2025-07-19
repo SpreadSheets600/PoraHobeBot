@@ -1,5 +1,6 @@
 import discord
 import datetime
+import math
 
 from discord.ext import commands
 from discord.commands import slash_command, Option
@@ -17,6 +18,107 @@ SUBJECT_CHANNELS = {
     "electronics": 1387810558153068594,
     "computer organization": 1387810527983567040,
 }
+
+
+class PaginatedNotesView(discord.ui.View):
+    """A paginated view for displaying notes with navigation buttons."""
+    
+    def __init__(self, notes, notes_per_page=5):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.notes = notes
+        self.notes_per_page = notes_per_page
+        self.current_page = 0
+        self.total_pages = max(1, math.ceil(len(notes) / notes_per_page)) if notes else 1
+        
+        # Update button states
+        self.update_buttons()
+    
+    def update_buttons(self):
+        """Update button states based on current page."""
+        # Clear all items and re-add them with updated states
+        self.clear_items()
+        
+        # Previous button
+        prev_button = discord.ui.Button(
+            label="Previous",
+            style=discord.ButtonStyle.secondary,
+            disabled=self.current_page == 0 or not self.notes,
+            emoji="⬅️"
+        )
+        prev_button.callback = self.previous_page
+        self.add_item(prev_button)
+        
+        # Next button  
+        next_button = discord.ui.Button(
+            label="Next",
+            style=discord.ButtonStyle.secondary,
+            disabled=self.current_page >= self.total_pages - 1 or not self.notes,
+            emoji="➡️"
+        )
+        next_button.callback = self.next_page
+        self.add_item(next_button)
+    
+    def create_embed(self):
+        """Create embed for current page."""
+        embed = discord.Embed(title="📚 Notes Index", color=discord.Color.purple())
+        
+        # Calculate start and end indices for current page
+        start_idx = self.current_page * self.notes_per_page
+        end_idx = min(start_idx + self.notes_per_page, len(self.notes))
+        
+        if not self.notes:
+            embed.description = "No notes found."
+            return embed
+        
+        # Add notes for current page
+        for i in range(start_idx, end_idx):
+            note = self.notes[i]
+            note_id, title, file_url, timestamp, tags, user_id = note
+            
+            # Determine if it's a link or file
+            is_link = file_url.startswith("http") and (
+                "youtube.com" in file_url
+                or "drive.google.com" in file_url
+                or "youtu.be" in file_url
+            )
+            icon = "🔗" if is_link else "📄"
+            
+            # Format upload date (show only date, not full timestamp)
+            upload_date = timestamp[:10] if timestamp else "Unknown"
+            
+            # Simplified display - title, subject, date, and access link
+            embed.add_field(
+                name=f"{icon} {title}",
+                value=f"**Subject:** {tags.title() if tags else 'Unknown'}\n**Date:** {upload_date}\n[📥 Access]({file_url}) | ID: `{note_id}`",
+                inline=False,
+            )
+        
+        # Add pagination info in footer
+        embed.set_footer(
+            text=f"Page {self.current_page + 1} of {self.total_pages} • {len(self.notes)} total notes"
+        )
+        
+        return embed
+    
+    async def previous_page(self, interaction: discord.Interaction):
+        """Handle previous page button click."""
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.defer()
+    
+    async def next_page(self, interaction: discord.Interaction):
+        """Handle next page button click."""
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.defer()
 
 
 class NotesCog(commands.Cog):
@@ -195,31 +297,17 @@ class NotesCog(commands.Cog):
 
         except Exception as e:
             await ctx.followup.send(f"Database Error : {e}", ephemeral=True)
-
             return
 
         if not notes:
             await ctx.followup.send("No Notes Found.", ephemeral=True)
             return
 
-        embed = discord.Embed(title="📚 Notes Index", color=discord.Color.purple())
-        for note in notes[:10]:
-            note_id, title, file_url, timestamp, tags, user_id = note
-            is_link = file_url.startswith("http") and (
-                "youtube.com" in file_url
-                or "drive.google.com" in file_url
-                or "youtu.be" in file_url
-            )
-            icon = "🔗" if is_link else "📄"
-            embed.add_field(
-                name=f"{icon} {title} (ID : {note_id})",
-                value=f"Subject : `{tags}`\n[Open]({file_url})\nUploaded : `{timestamp[:10]}`\nBy : <@{user_id}>",
-                inline=False,
-            )
-        embed.set_footer(
-            text="Use /note_index With A Subject, Keyword, Or User To Search More Notes!"
-        )
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        # Create paginated view
+        view = PaginatedNotesView(notes)
+        embed = view.create_embed()
+        
+        await ctx.followup.send(embed=embed, view=view, ephemeral=True)
 
     @slash_command(
         name="note_delete",
