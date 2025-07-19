@@ -121,11 +121,14 @@ def upload_file():
                 flash("File Type Not Allowed.", "error")
                 return redirect(request.url)
 
-            if file.content_length and file.content_length > 100 * 1024 * 1024:
+            file.seek(0, os.SEEK_END)
+            filesize = file.tell()
+            file.seek(0)
+
+            if filesize > 100 * 1024 * 1024:
                 flash("File Too Large (Max 100MB).", "error")
                 return redirect(request.url)
 
-            filesize = file.content_length or 0
             filename = secure_filename(file.filename)
             save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
 
