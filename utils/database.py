@@ -45,3 +45,36 @@ def initialize_database(db_name="notes.db"):
 
     conn.commit()
     return conn
+
+
+def update_note(conn, note_id, title=None, content=None, file_url=None, tags=None):
+    cursor = conn.cursor()
+    fields = []
+    params = []
+
+    if title is not None:
+        fields.append("title = ?")
+        params.append(title)
+
+    if content is not None:
+        fields.append("content = ?")
+        params.append(content)
+
+    if file_url is not None:
+        fields.append("file_url = ?")
+        params.append(file_url)
+
+    if tags is not None:
+        fields.append("tags = ?")
+        params.append(tags)
+
+    if not fields:
+        raise ValueError("No fields to update.")
+
+    params.append(note_id)
+
+    sql = f"UPDATE notes SET {', '.join(fields)} WHERE id = ?"
+    cursor.execute(sql, tuple(params))
+    conn.commit()
+
+    return cursor.rowcount
