@@ -113,6 +113,57 @@ class NotePaginationView(discord.ui.View):
 
 
 class NotesCog(commands.Cog):
+    @slash_command(
+        name="note_edit",
+        description="Edit a note by its ID (only your own notes or if admin)",
+    )
+    async def note_edit(
+        self,
+        ctx: discord.ApplicationContext,
+        note_id: Option(int, "ID Of The Note To Edit"),  # type: ignore
+        title: Option(str, "New Title", required=False) = None,  # type: ignore
+        content: Option(str, "New Content", required=False) = None,  # type: ignore
+        file_url: Option(str, "New File URL or Link", required=False) = None,  # type: ignore
+        tags: Option(str, "New Subject Tag", required=False) = None,  # type: ignore
+    ):
+        await ctx.defer(ephemeral=True)
+        try:
+            self.cursor.execute("SELECT user_id FROM notes WHERE id = ?", (note_id,))
+            row = self.cursor.fetchone()
+            if not row:
+                await ctx.followup.send("Note Not Found.", ephemeral=True)
+                return
+            note_owner = row[0]
+            if (
+                str(ctx.author.id) != note_owner
+                and not ctx.author.guild_permissions.administrator
+            ):
+                await ctx.followup.send(
+                    "You Can Only Edit Your Own Notes Unless You Are An Admin.",
+                    ephemeral=True,
+                )
+                return
+            from utils.database import update_note
+
+            updated = update_note(
+                self.conn,
+                note_id,
+                title=title,
+                content=content,
+                file_url=file_url,
+                tags=tags,
+            )
+            if updated:
+                await ctx.followup.send(
+                    f"Note ID {note_id} updated successfully.", ephemeral=True
+                )
+            else:
+                await ctx.followup.send(
+                    f"No changes made to Note ID {note_id}.", ephemeral=True
+                )
+        except Exception as e:
+            await ctx.followup.send(f"Error editing note: {e}", ephemeral=True)
+
     def __init__(self, bot):
         self.bot = bot
         try:
