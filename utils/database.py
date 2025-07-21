@@ -78,3 +78,21 @@ def update_note(conn, note_id, title=None, content=None, file_url=None, tags=Non
     conn.commit()
 
     return cursor.rowcount
+
+
+def get_note_by_id(conn, note_id):
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, title, content, file_url, tags, user_id FROM notes WHERE id = ?", (note_id,)
+    )
+    row = cursor.fetchone()
+    if row:
+        return {
+            "id": row[0],
+            "title": row[1],
+            "content": row[2],
+            "file_url": row[3],
+            "tags": row[4],
+            "user_id": row[5],
+        }
+    return None

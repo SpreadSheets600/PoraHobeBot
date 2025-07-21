@@ -8,11 +8,13 @@ from flask import (
     jsonify,
     send_from_directory,
     render_template,
+    render_template_string,
     redirect,
     url_for,
     flash,
     session,
 )
+from utils.database import get_note_by_id, update_note
 from werkzeug.utils import secure_filename
 import threading
 import requests
@@ -44,6 +46,12 @@ SUBJECT_CHANNELS = {
     "electronics": 1387810558153068594,
     "computer organization": 1387810527983567040,
 }
+
+ADMIN = [
+    123456789012345678,
+    987654321098765432,
+]
+
 
 dotenv.load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -105,61 +113,64 @@ def upload_file():
     if request.method == "POST":
         subject = request.form.get("subject", "").strip().lower()
         upload_type = request.form.get("upload_type")
-        file = request.files.get("file")
         link = request.form.get("link", "").strip()
+        custom_title = request.form.get("title", "").strip()
 
         if not subject or subject not in SUBJECT_CHANNELS:
             flash("Invalid Or Missing Subject.", "error")
             return redirect(request.url)
 
         if upload_type == "file":
-            if not file or file.filename == "":
+            files = request.files.getlist("file")
+            if not files or all(f.filename == "" for f in files):
                 flash("No File Selected.", "error")
                 return redirect(request.url)
 
-            if not allowed_file(file.filename):
-                flash("File Type Not Allowed.", "error")
-                return redirect(request.url)
+            for file in files:
+                if not allowed_file(file.filename):
+                    flash(f"File Type Not Allowed: {file.filename}", "error")
+                    return redirect(request.url)
+                file.seek(0, os.SEEK_END)
+                filesize = file.tell()
+                file.seek(0)
+                if filesize > 100 * 1024 * 1024:
+                    flash(f"File Too Large (Max 100MB): {file.filename}", "error")
+                    return redirect(request.url)
 
-            file.seek(0, os.SEEK_END)
-            filesize = file.tell()
-            file.seek(0)
+            for file in files:
+                filename = secure_filename(file.filename)
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                try:
+                    file.save(save_path)
+                except Exception as e:
+                    flash(f"Failed To Save File : {filename} ({e})", "error")
+                    return redirect(request.url)
 
-            if filesize > 100 * 1024 * 1024:
-                flash("File Too Large (Max 100MB).", "error")
-                return redirect(request.url)
+                file_url = url_for("uploaded_file", filename=filename, _external=True)
 
-            filename = secure_filename(file.filename)
-            save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-
-            try:
-                file.save(save_path)
-            except Exception as e:
-                flash(f"Failed to save file: {e}", "error")
-                return redirect(request.url)
-
-            file_url = url_for("uploaded_file", filename=filename, _external=True)
-
-            try:
-                requests.post(
-                    "http://localhost:5000/api/upload",
-                    json={
-                        "subject": subject,
-                        "user_id": user_id,
-                        "file_url": file_url,
-                        "title": filename,
-                        "filesize": filesize,
-                    },
+                note_title = (
+                    custom_title if len(files) == 1 and custom_title else filename
                 )
 
-            except Exception as e:
-                flash(f"Failed To Notify Via Discord Bot : {e}", "error")
+                try:
+                    requests.post(
+                        "http://localhost:5000/api/upload",
+                        json={
+                            "subject": subject,
+                            "user_id": user_id,
+                            "file_url": file_url,
+                            "title": note_title,
+                            "filesize": os.path.getsize(save_path),
+                        },
+                    )
+                except Exception as e:
+                    flash(f"Failed To Notify Via Discord Bot : {e}", "error")
 
-            save_note_to_db(
-                filename, file_url, SUBJECT_CHANNELS[subject], user_id, subject
-            )
+                save_note_to_db(
+                    note_title, file_url, SUBJECT_CHANNELS[subject], user_id, subject
+                )
 
-            flash("File Uploaded And Will Be Sent To Discord!", "success")
+            flash("File(s) Uploaded And Will Be Sent To Discord!", "success")
             return redirect(request.url)
 
         elif upload_type == "link":
@@ -351,12 +362,74 @@ def view_notes():
     notes = [dict(note) for note in notes]
     subjects = list(SUBJECT_CHANNELS.keys())
 
+    is_admin = False
+    user_id = session.get("user_id")
+    username = session.get("username")
+    avatar_url = session.get("avatar_url")
+    if user_id and int(user_id) in ADMIN:
+        is_admin = True
+
     return render_template(
         "notes_list.html",
         notes=notes,
         subjects=subjects,
         request=request,
+        is_admin=is_admin,
+        user_id=user_id,
+        username=username,
+        avatar_url=avatar_url,
     )
+
+
+@app.route("/edit_note/<int:note_id>", methods=["GET", "POST"])
+def edit_note(note_id):
+    user_id = session.get("user_id")
+    conn = sqlite3.connect("notes.db")
+    conn.row_factory = sqlite3.Row
+
+    note = get_note_by_id(conn, note_id)
+    if not note:
+        conn.close()
+        return render_template_string(
+            "<h2>Note not found.</h2><a href='/notes'>Back To Notes List</a>"
+        )
+
+    if not (
+        user_id and (int(user_id) in ADMIN or str(user_id) == str(note.get("user_id")))
+    ):
+        conn.close()
+        flash("You are not authorized to edit this note.", "error")
+        return redirect(url_for("view_notes"))
+    message = None
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+        file_url = request.form.get("file_url", "").strip()
+        tags = request.form.get("tags", "").strip()
+        update_note(
+            conn, note_id, title=title, content=content, file_url=file_url, tags=tags
+        )
+        message = "Note updated successfully!"
+
+        note = get_note_by_id(conn, note_id)
+    conn.close()
+    return render_template("edit_note.html", note=note, message=message)
+
+
+@app.route("/delete_note/<int:note_id>", methods=["POST"])
+def delete_note(note_id):
+    user_id = session.get("user_id")
+    if not user_id or int(user_id) not in ADMIN:
+        flash("You are not authorized to delete notes.", "error")
+        return redirect(url_for("view_notes"))
+
+    conn = sqlite3.connect("notes.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+    conn.commit()
+    conn.close()
+    flash("Note deleted successfully!", "success")
+    return redirect(url_for("view_notes"))
 
 
 def run_flask():
