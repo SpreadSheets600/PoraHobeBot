@@ -8,9 +8,12 @@ from flask import (
     render_template_string,
     send_from_directory,
     flash,
+    render_template,
 )
 import requests
 import sqlite3
+
+from utils.database import get_note_by_id, update_note
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {
@@ -74,14 +77,16 @@ def send_to_discord_channel(subject, file_url, filename, user_id=None):
     channel_id = SUBJECT_CHANNELS.get(subject.lower())
     if not channel_id:
         return False
-    content = f"📄 Note uploaded for **{subject.title()}**: [Download here]({file_url})"
+
+    content = f"📄 Note Uploaded For **{subject.title()}**: [Download here]({file_url})"
     if user_id:
         content += f"\nUploaded by: <@{user_id}>"
+
     data = {"content": content}
-    # You can use a webhook for each channel, or have your bot listen for an API call (see below for bot integration)
+
     if DISCORD_WEBHOOK_URL:
         requests.post(DISCORD_WEBHOOK_URL, json=data)
-    # else: implement bot-side API endpoint
+
     return True
 
 
@@ -91,19 +96,25 @@ def upload_file():
         subject = request.form.get("subject", "").strip().lower()
         user_id = request.form.get("user_id", "").strip() or None
         file = request.files.get("file")
+
         if not subject or subject not in SUBJECT_CHANNELS:
             flash("Invalid or missing subject.")
             return redirect(request.url)
+
         if not file or file.filename == "":
             flash("No file selected.")
             return redirect(request.url)
+
         if not allowed_file(file.filename):
             flash("File type not allowed.")
             return redirect(request.url)
+
         filename = secure_filename(file.filename)
         save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
         file.save(save_path)
         file_url = url_for("uploaded_file", filename=filename, _external=True)
+
         save_note_to_db(
             filename, file_url, SUBJECT_CHANNELS[subject], user_id or "web", subject
         )
@@ -126,6 +137,29 @@ def upload_file():
         {% endwith %}
     """
     )
+
+
+@app.route("/edit_note/<int:note_id>", methods=["GET", "POST"])
+def edit_note(note_id):
+    conn = sqlite3.connect(DB_PATH)
+    message = None
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "").strip()
+        file_url = request.form.get("file_url", "").strip()
+        tags = request.form.get("tags", "").strip()
+
+        update_note(
+            conn, note_id, title=title, content=content, file_url=file_url, tags=tags
+        )
+        message = "Note updated successfully!"
+    note = get_note_by_id(conn, note_id)
+    conn.close()
+    if not note:
+        return render_template_string(
+            "<h2>Note not found.</h2><a href='/notes'>Back to Notes List</a>"
+        )
+    return render_template("edit_note.html", note=note, message=message)
 
 
 @app.route("/uploads/<filename>")
