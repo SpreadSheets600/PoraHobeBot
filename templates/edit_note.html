@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Note</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+</head>
+
+<body class="bg-base-200 min-h-screen p-4">
+  <div class="card w-full max-w-lg mx-auto bg-base-100 shadow-xl">
+    <div class="card-body">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h2 class="text-3xl font-bold text-primary">Edit Note</h2>
+        <a href="/notes" class="btn btn-primary btn-sm">Back to Notes</a>
+      </div>
+    <form method="post" class="space-y-4">
+      <div>
+        <label class="block font-semibold mb-2">Title</label>
+        <input type="text" name="title" value="{{ note['title'] }}" required
+          class="input input-bordered w-full" />
+      </div>
+      <div>
+        <label class="block font-semibold mb-2">Content</label>
+        <textarea name="content" rows="4" class="textarea textarea-bordered w-full">{{ note['content'] }}</textarea>
+      </div>
+      <div>
+        <label class="block font-semibold mb-2">File URL</label>
+        <input type="url" name="file_url" value="{{ note['file_url'] }}"
+          class="input input-bordered w-full" />
+      </div>
+      <div>
+        <label class="block font-semibold mb-2">Subject Tag</label>
+        <select name="tags" class="select select-bordered w-full">
+          {% set all_subjects = ['c', 'dsa', 'math', 'python', 'economics', 'electronics', 'computer organization'] %}
+          {% for subject in all_subjects %}
+          <option value="{{ subject }}" {% if note['tags']==subject %}selected{% endif %}>{{ subject.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Update Note</button>
+    </form>
+    {% if message %}
+    <div class="alert alert-success mt-4">
+      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
+    {% endif %}
+    </div>
+  </div>
+</body>
+
+</html>
