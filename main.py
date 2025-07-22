@@ -256,13 +256,13 @@ def callback():
     user_resp = requests.get(DISCORD_API_USER_URL, headers=user_headers)
 
     if user_resp.status_code != 200:
-        flash("Failed to get user info from Discord.", "error")
+        flash("Failed To get User From Discord.", "error")
         return redirect(url_for("upload_file"))
 
     user_json = user_resp.json()
 
     session["user_id"] = user_json["id"]
-    session["username"] = f"{user_json['username']}#{user_json['discriminator']}"
+    session["username"] = f"{user_json['username']}"
     session["avatar_url"] = (
         f"https://cdn.discordapp.com/avatars/{user_json['id']}/{user_json['avatar']}.png"
         if user_json.get("avatar")
@@ -362,9 +362,11 @@ def view_notes():
     notes = [dict(note) for note in notes]
     subjects = list(SUBJECT_CHANNELS.keys())
 
+    total_users = len(set(note["user_id"] for note in notes if note["user_id"]))
+
     is_admin = False
     user_id = session.get("user_id")
-    username = session.get("username")
+    username = session.get("username").split("#")[0]
     avatar_url = session.get("avatar_url")
     if user_id and int(user_id) in ADMIN:
         is_admin = True
@@ -378,6 +380,7 @@ def view_notes():
         user_id=user_id,
         username=username,
         avatar_url=avatar_url,
+        total_users=total_users,
     )
 
 
@@ -412,8 +415,17 @@ def edit_note(note_id):
         message = "Note updated successfully!"
 
         note = get_note_by_id(conn, note_id)
+    username = session.get("username")
+    avatar_url = session.get("avatar_url")
     conn.close()
-    return render_template("edit_note.html", note=note, message=message)
+    return render_template(
+        "edit_note.html",
+        note=note,
+        message=message,
+        user_id=user_id,
+        username=username,
+        avatar_url=avatar_url,
+    )
 
 
 @app.route("/delete_note/<int:note_id>", methods=["POST"])
