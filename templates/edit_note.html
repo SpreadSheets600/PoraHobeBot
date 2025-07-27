@@ -83,7 +83,7 @@
         <div>
           <label class="block font-semibold mb-1">Subject Tag</label>
           <select name="tags" class="select select-bordered w-full rounded-lg">
-            {% set all_subjects = ['c', 'dsa', 'math', 'python', 'economics', 'electronics', 'computer organization'] %}
+            {% set all_subjects = ['c', 'dsa', 'math', 'python', 'economics', 'electronics', 'computer organization', 'other'] %}
             {% for subject in all_subjects %}
             <option value="{{ subject }}" {% if note['tags']==subject %}selected{% endif %}>{{ subject.title() }}
             </option>
