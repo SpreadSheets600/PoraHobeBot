@@ -12,13 +12,16 @@ from flask import (
     redirect,
     url_for,
     flash,
+    send_file,
     session,
 )
 from utils.database import get_note_by_id, update_note
+from PIL import Image, ImageDraw, ImageFont
 from werkzeug.utils import secure_filename
 import threading
 import requests
 import sqlite3
+import io
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {
@@ -442,6 +445,128 @@ def delete_note(note_id):
     conn.close()
     flash("Note deleted successfully!", "success")
     return redirect(url_for("view_notes"))
+
+
+@app.route("/frontpages", methods=["GET", "POST"])
+def generate_frontpage():
+    if not session.get("user_id"):
+        flash("Please Log In With Discord Use This Feature", "error")
+        return redirect(url_for("login"))
+
+    user_id = session.get("user_id")
+    username = session.get("username")
+    avatar_url = session.get("avatar_url")
+
+    subject_codes = {
+        "Data Structures & Algorithms Lab": "PCC - CS391",
+        "Computer Organization Lab": "PCC - CS392",
+        "IT Workshop": "PCC - CS393",
+        "Analog & Digital Electronics Lab": "ES - CS391",
+    }
+
+    if request.method == "POST":
+        name = request.form["name"]
+        roll = request.form["roll"]
+        reg = request.form["reg"]
+
+        subject = request.form["subject"]
+
+        stream = request.form["stream"]
+        section = request.form["section"]
+
+        semester = int(request.form["semester"])
+        if semester == 1:
+            semester_final = "1ST"
+        elif semester == 2:
+            semester_final = "2ND"
+        elif semester == 3:
+            semester_final = "3RD"
+        elif semester >= 4 and semester <= 8:
+            semester_final = "4TH"
+
+        year = int(request.form["year"])
+        if year == 1:
+            year_final = "1ST"
+        elif year == 2:
+            year_final = "2ND"
+        elif year == 3:
+            year_final = "3RD"
+        elif year == 4:
+            year_final = "4TH"
+
+        print(
+            f"Received Data : Name : {name} \nRoll : {roll} \nReg : {reg} \nSection : {section} \nSubject : {subject}"
+        )
+
+        subject_code = subject_codes.get(subject, "N/A")
+
+        img = Image.open("static/blank_template.png")
+        draw = ImageDraw.Draw(img)
+
+        font = ImageFont.truetype("static/Sans.ttf", size=45)
+
+        x = 140
+        y = 800
+        line_height = 60
+
+        draw.text((x, y), f"Name : {name}", font=font, fill="black")
+        draw.text((x, y + line_height), f"Roll No. : {roll}", font=font, fill="black")
+        draw.text((x, y + 2 * line_height), f"Reg No. : {reg}", font=font, fill="black")
+
+        draw.text(
+            (x, y + 4.5 * line_height), f"Year : {year_final}", font=font, fill="black"
+        )
+
+        draw.text(
+            (x, y + 5.5 * line_height), f"Section : {section}", font=font, fill="black"
+        )
+        draw.text(
+            (x, y + 6.5 * line_height), f"Stream : {stream}", font=font, fill="black"
+        )
+        draw.text(
+            (x, y + 7.5 * line_height),
+            f"Semester : {semester_final}",
+            font=font,
+            fill="black",
+        )
+
+        draw.text(
+            (x, y + 9.5 * line_height),
+            f"Subject Code : {subject_code}",
+            font=font,
+            fill="black",
+        )
+        draw.text(
+            (x, y + 10.5 * line_height),
+            f"Subject Name : {subject}",
+            font=font,
+            fill="black",
+        )
+
+        img_io = io.BytesIO()
+        img.save(img_io, "PNG")
+        img_io.seek(0)
+
+        return send_file(
+            img_io,
+            mimetype="image/png",
+            as_attachment=True,
+            download_name=f"{name}-{subject}-FrontPageCover.png",
+        )
+
+    subjects = [
+        "Data Structures & Algorithms Lab",
+        "Computer Organization Lab",
+        "IT Workshop",
+        "Analog & Digital Electronics Lab",
+    ]
+    return render_template(
+        "form.html",
+        subjects=subjects,
+        user_id=user_id,
+        username=username,
+        avatar_url=avatar_url,
+    )
 
 
 def run_flask():
