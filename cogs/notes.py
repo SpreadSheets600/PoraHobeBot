@@ -16,6 +16,7 @@ SUBJECT_CHANNELS = {
     "economics": 1387810261527691344,
     "electronics": 1387810558153068594,
     "computer organization": 1387810527983567040,
+    "other": 1398993763673575424,
 }
 
 
