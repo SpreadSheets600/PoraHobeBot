@@ -1,4 +1,5 @@
 import os
+import time
 import dotenv
 import discord
 import datetime
@@ -70,11 +71,13 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
 
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://0.0.0.0:5000/callback")
+DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://0.0.0.0:PORT/callback")
 DISCORD_OAUTH_AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
 DISCORD_OAUTH_TOKEN_URL = "https://discord.com/api/oauth2/token"
 DISCORD_API_USER_URL = "https://discord.com/api/users/@me"
+DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID")
 
+PORT = int(os.getenv("PORT", 5000))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -157,7 +160,7 @@ def upload_file():
 
                 try:
                     requests.post(
-                        "http://localhost:5000/api/upload",
+                        "http://0.0.0.0:PORT/api/upload",
                         json={
                             "subject": subject,
                             "user_id": user_id,
@@ -183,7 +186,7 @@ def upload_file():
 
             try:
                 requests.post(
-                    "http://localhost:5000/api/upload",
+                    "http://0.0.0.0:PORT/api/upload",
                     json={
                         "subject": subject,
                         "user_id": user_id,
@@ -219,7 +222,8 @@ def login():
     discord_auth_url = (
         f"{DISCORD_OAUTH_AUTHORIZE_URL}?client_id={DISCORD_CLIENT_ID}"
         f"&redirect_uri={DISCORD_REDIRECT_URI}"
-        f"&response_type=code&scope=identify"
+        f"&response_type=code"
+        f"&scope=identify%20guilds.join"
     )
     return redirect(discord_auth_url)
 
@@ -227,52 +231,77 @@ def login():
 @app.route("/callback")
 def callback():
     code = request.args.get("code")
-
     if not code:
-        flash("No Code Provided From Discord!", "error")
-        return redirect(url_for("upload_file"))
+        return "Missing Code In Callback", 400
 
-    data = {
+    token_data = {
         "client_id": DISCORD_CLIENT_ID,
         "client_secret": DISCORD_CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
         "redirect_uri": DISCORD_REDIRECT_URI,
-        "scope": "identify",
+        "scope": "identify guilds.join",
     }
 
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    token_resp = requests.post(DISCORD_OAUTH_TOKEN_URL, data=data, headers=headers)
+    token_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    token_resp = requests.post(
+        DISCORD_OAUTH_TOKEN_URL, data=token_data, headers=token_headers
+    )
 
     if token_resp.status_code != 200:
-        flash("Failed To Authenticate With Discord!", "error")
-        return redirect(url_for("upload_file"))
+        return f"Token Exchange Failed : {token_resp.text}", 400
 
     token_json = token_resp.json()
     access_token = token_json.get("access_token")
 
     if not access_token:
-        flash("No Access Token From Discord!", "error")
-        return redirect(url_for("upload_file"))
+        return "Access Token Not Found", 400
 
     user_headers = {"Authorization": f"Bearer {access_token}"}
     user_resp = requests.get(DISCORD_API_USER_URL, headers=user_headers)
 
     if user_resp.status_code != 200:
-        flash("Failed To get User From Discord.", "error")
-        return redirect(url_for("upload_file"))
+        return f"Failed To Fetch User Info : {user_resp.text}", 400
 
     user_json = user_resp.json()
+    user_id = user_json["id"]
+
+    add_user_url = (
+        f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{user_id}"
+    )
+    bot_headers = {
+        "Authorization": f"Bot {TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    add_data = {
+        "access_token": access_token,
+        "nick": user_json.get("username"),
+    }
+
+    add_user_resp = requests.put(
+        add_user_url,
+        headers=bot_headers,
+        json=add_data,
+    )
+
+    if add_user_resp.status_code not in (201, 204):
+        print(
+            "[ERROR] Failed To Add User :",
+            add_user_resp.status_code,
+            add_user_resp.text,
+        )
+        return "Failed To Add User To Guild", 400
 
     session["user_id"] = user_json["id"]
-    session["username"] = f"{user_json['username']}"
+    session["username"] = user_json["username"]
     session["avatar_url"] = (
         f"https://cdn.discordapp.com/avatars/{user_json['id']}/{user_json['avatar']}.png"
         if user_json.get("avatar")
         else None
     )
 
-    flash(f"Logged In As {session['username']}")
+    print(f"[INFO] User {user_json['username']} Added To Guild Successfully")
     return redirect(url_for("upload_file"))
 
 
@@ -570,7 +599,7 @@ def generate_frontpage():
 
 
 def run_flask():
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=PORT, debug=True, use_reloader=False)
 
 
 @bot.event
