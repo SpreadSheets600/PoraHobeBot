@@ -97,3 +97,9 @@ def get_note_by_id(conn, note_id):
             "user_id": row[5],
         }
     return None
+
+
+def update_table(conn):
+    cursor = conn.cursor()
+    cursor.execute("ALTER TABLE notes ADD COLUMN thumbnail_url TEXT;")
+    conn.commit()
