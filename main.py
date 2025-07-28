@@ -1,5 +1,4 @@
 import os
-import time
 import dotenv
 import discord
 import datetime
@@ -54,7 +53,6 @@ SUBJECT_CHANNELS = {
 
 ADMIN = [
     123456789012345678,
-    987654321098765432,
 ]
 
 
@@ -318,6 +316,17 @@ def uploaded_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
+# DownloadButton class must be defined before usage
+class DownloadButton(discord.ui.View):
+    def __init__(self, download_link: str):
+        super().__init__(timeout=None)
+        self.download_link = download_link
+        button_download = discord.ui.Button(
+            label="Download", style=discord.ButtonStyle.url, url=self.download_link
+        )
+        self.add_item(button_download)
+
+
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
     data = request.json
@@ -464,15 +473,31 @@ def edit_note(note_id):
 @app.route("/delete_note/<int:note_id>", methods=["POST"])
 def delete_note(note_id):
     user_id = session.get("user_id")
-    if not user_id or int(user_id) not in ADMIN:
-        flash("You are not authorized to delete notes.", "error")
-        return redirect(url_for("view_notes"))
 
     conn = sqlite3.connect("notes.db")
     cursor = conn.cursor()
+
+    cursor.execute("SELECT user_id FROM notes WHERE id = ?", (note_id,))
+    note = cursor.fetchone()
+
+    if not note:
+        flash("Note Not Found!", "error")
+        return redirect(url_for("view_notes"))
+
+    note_user_id = note[0]
+
+    if (
+        not note_user_id
+        or not user_id
+        or not (int(user_id) in ADMIN or int(note_user_id) == int(user_id))
+    ):
+        flash("You Are Not Authorized To Delete Notes!", "error")
+        return redirect(url_for("view_notes"))
+
     cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
     conn.commit()
     conn.close()
+
     flash("Note deleted successfully!", "success")
     return redirect(url_for("view_notes"))
 
@@ -500,8 +525,6 @@ def generate_frontpage():
         reg = request.form["reg"]
 
         subject = request.form["subject"]
-
-        stream = request.form["stream"]
         section = request.form["section"]
 
         semester = int(request.form["semester"])
@@ -543,31 +566,29 @@ def generate_frontpage():
         draw.text((x, y + line_height), f"Roll No. : {roll}", font=font, fill="black")
         draw.text((x, y + 2 * line_height), f"Reg No. : {reg}", font=font, fill="black")
 
-        draw.text(
-            (x, y + 4.5 * line_height), f"Year : {year_final}", font=font, fill="black"
-        )
-
+        draw.text((x, y + 4.5 * line_height), "Stream : CSE", font=font, fill="black")
         draw.text(
             (x, y + 5.5 * line_height), f"Section : {section}", font=font, fill="black"
         )
-        draw.text(
-            (x, y + 6.5 * line_height), f"Stream : {stream}", font=font, fill="black"
-        )
+
         draw.text(
             (x, y + 7.5 * line_height),
             f"Semester : {semester_final}",
             font=font,
             fill="black",
         )
+        draw.text(
+            (x, y + 8.5 * line_height), f"Year : {year_final}", font=font, fill="black"
+        )
 
         draw.text(
-            (x, y + 9.5 * line_height),
+            (x, y + 10.5 * line_height),
             f"Subject Code : {subject_code}",
             font=font,
             fill="black",
         )
         draw.text(
-            (x, y + 10.5 * line_height),
+            (x, y + 11.5 * line_height),
             f"Subject Name : {subject}",
             font=font,
             fill="black",
@@ -597,6 +618,107 @@ def generate_frontpage():
         username=username,
         avatar_url=avatar_url,
     )
+
+
+@app.route("/wallpapers", methods=["GET", "POST"])
+def upload_wallpapers():
+    if request.method == "GET":
+        if not session.get("user_id"):
+            flash("Please Log In With Discord Use This Feature", "error")
+            return redirect(url_for("login"))
+
+        user_id = session.get("user_id")
+        username = session.get("username")
+        avatar_url = session.get("avatar_url")
+
+        conn = sqlite3.connect("notes.db")
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM notes WHERE tags='wallpaper' ORDER BY timestamp DESC"
+        )
+        wallpapers = cursor.fetchall()
+        conn.close()
+
+        wallpapers = [dict(w) for w in wallpapers]
+        user_id = session.get("user_id")
+
+        return render_template(
+            "wallpapers.html",
+            wallpapers=wallpapers,
+            user_id=user_id,
+            username=username,
+            avatar_url=avatar_url,
+        )
+
+    elif request.method == "POST":
+        if not session.get("user_id"):
+            flash("Please Log In With Discord Use This Feature", "error")
+            return redirect(url_for("login"))
+
+        user_id = session.get("user_id")
+        files = request.files.getlist("wallpaper")
+
+        if not files or all(f.filename == "" for f in files):
+            flash("No Wallpaper Selected.", "error")
+            return redirect(url_for("upload_file"))
+
+        wallpaper_folder = os.path.join(app.config["UPLOAD_FOLDER"], "wallpapers")
+
+        os.makedirs(wallpaper_folder, exist_ok=True)
+
+        for file in files:
+            if not allowed_file(file.filename):
+                flash(f"File Type Not Allowed: {file.filename}", "error")
+                return redirect(url_for("upload_file"))
+            file.seek(0, os.SEEK_END)
+            filesize = file.tell()
+            file.seek(0)
+            if filesize > 50 * 1024 * 1024:
+                flash(f"Wallpaper Too Large (Max 50MB): {file.filename}", "error")
+                return redirect(url_for("upload_file"))
+        for file in files:
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(wallpaper_folder, filename)
+            try:
+                file.save(save_path)
+            except Exception as e:
+                flash(f"Failed To Save Wallpaper : {filename} ({e})", "error")
+                return redirect(url_for("upload_file"))
+            file_url = url_for("serve_wallpaper", filename=filename, _external=True)
+            try:
+                conn = sqlite3.connect("notes.db")
+                cursor = conn.cursor()
+                timestamp = datetime.datetime.utcnow().isoformat()
+                cursor.execute(
+                    """
+                    INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        filename,
+                        "",
+                        file_url,
+                        "wallpaper",
+                        str(user_id),
+                        timestamp,
+                        "wallpaper",
+                    ),
+                )
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Flask] Failed to save wallpaper to notes DB: {e}")
+        flash("Wallpaper Uploaded Successfully!", "success")
+
+        return redirect(url_for("upload_file"))
+    return redirect(url_for("upload_file"))
+
+
+@app.route("/uploads/wallpapers/<filename>")
+def serve_wallpaper(filename):
+    wallpaper_folder = os.path.join(app.config["UPLOAD_FOLDER"], "wallpapers")
+    return send_from_directory(wallpaper_folder, filename)
 
 
 def run_flask():
@@ -633,18 +755,6 @@ async def on_ready():
 
 
 bot.load_extension("cogs.notes")
-
-
-class DownloadButton(discord.ui.View):
-    def __init__(self, download_link: str):
-        super().__init__(timeout=None)
-        self.download_link = download_link
-
-        button_download = discord.ui.Button(
-            label="Download", style=discord.ButtonStyle.url, url=self.download_link
-        )
-        self.add_item(button_download)
-
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
