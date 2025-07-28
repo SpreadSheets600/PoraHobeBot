@@ -15,7 +15,7 @@ from flask import (
     send_file,
     session,
 )
-from utils.database import get_note_by_id, update_note
+from utils.database import get_note_by_id, update_note, update_table
 from PIL import Image, ImageDraw, ImageFont
 from werkzeug.utils import secure_filename
 import threading
@@ -52,8 +52,10 @@ SUBJECT_CHANNELS = {
 }
 
 ADMIN = [
-    123456789012345678,
+    727012870683885578,
+    1228289920888471564,
 ]
+
 
 
 dotenv.load_dotenv()
@@ -685,15 +687,32 @@ def upload_wallpapers():
             except Exception as e:
                 flash(f"Failed To Save Wallpaper : {filename} ({e})", "error")
                 return redirect(url_for("upload_file"))
+
+            thumbnail_folder = os.path.join(wallpaper_folder, "thumbnails")
+            os.makedirs(thumbnail_folder, exist_ok=True)
+
+            thumbnail_filename = f"thumb_{filename}"
+            thumbnail_path = os.path.join(thumbnail_folder, thumbnail_filename)
+
+            try:
+                with Image.open(save_path) as img:
+                    img.thumbnail((400, 400))
+                    img.save(thumbnail_path)
+            except Exception as e:
+                print(f"[Flask] Failed to generate thumbnail for {filename}: {e}")
+
             file_url = url_for("serve_wallpaper", filename=filename, _external=True)
+            thumbnail_url = url_for(
+                "serve_thumbnail", filename=thumbnail_filename, _external=True
+            )
             try:
                 conn = sqlite3.connect("notes.db")
                 cursor = conn.cursor()
                 timestamp = datetime.datetime.utcnow().isoformat()
                 cursor.execute(
                     """
-                    INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags, thumbnail_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         filename,
@@ -703,6 +722,7 @@ def upload_wallpapers():
                         str(user_id),
                         timestamp,
                         "wallpaper",
+                        thumbnail_url,
                     ),
                 )
                 conn.commit()
@@ -715,10 +735,22 @@ def upload_wallpapers():
     return redirect(url_for("upload_file"))
 
 
+@app.route("/uploads/wallpapers/thumbnails/<filename>")
+def serve_thumbnail(filename):
+    thumbnail_folder = os.path.join(
+        app.config["UPLOAD_FOLDER"], "wallpapers", "thumbnails"
+    )
+    response = send_from_directory(thumbnail_folder, filename)
+    response.headers["Cache-Control"] = "public, max-age=31536000"
+    return response
+
+
 @app.route("/uploads/wallpapers/<filename>")
 def serve_wallpaper(filename):
     wallpaper_folder = os.path.join(app.config["UPLOAD_FOLDER"], "wallpapers")
-    return send_from_directory(wallpaper_folder, filename)
+    response = send_from_directory(wallpaper_folder, filename)
+    response.headers["Cache-Control"] = "public, max-age=31536000"
+    return response
 
 
 def run_flask():
@@ -755,6 +787,7 @@ async def on_ready():
 
 
 bot.load_extension("cogs.notes")
+update_table(sqlite3.connect("notes.db"))
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
