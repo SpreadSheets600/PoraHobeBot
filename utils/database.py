@@ -83,7 +83,8 @@ def update_note(conn, note_id, title=None, content=None, file_url=None, tags=Non
 def get_note_by_id(conn, note_id):
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, title, content, file_url, tags, user_id FROM notes WHERE id = ?", (note_id,)
+        "SELECT id, title, content, file_url, tags, user_id FROM notes WHERE id = ?",
+        (note_id,),
     )
     row = cursor.fetchone()
     if row:
