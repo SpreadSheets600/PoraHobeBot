@@ -194,6 +194,21 @@
 							<label class="block font-semibold mb-1">Wallpaper(s)</label>
 							<input type="file" name="wallpaper" id="wallpaper-input" class="file-input file-input-bordered w-full rounded-lg" multiple accept="image/*" required />
 						</div>
+						<div>
+							<label class="block font-semibold mb-1">Tags</label>
+							<select name="wallpaper_tag" id="wallpaper-tag-select" class="select select-bordered w-full rounded-lg" required>
+								<option value="" disabled selected>Select a tag</option>
+								<option value="AI">AI</option>
+								<option value="Anime">Anime</option>
+								<option value="Nature">Nature</option>
+								<option value="Abstract">Abstract</option>
+								<option value="Minimal">Minimal</option>
+								<option value="Space">Space</option>
+								<option value="City">City</option>
+								<option value="Other">Other</option>
+							</select>
+							<span class="text-xs text-gray-400 block mt-1">Choose the main tag for the wallpaper(s).</span>
+						</div>
 						<button type="submit" class="btn btn-primary w-full">Upload Wallpaper(s)</button>
 					</form>
 				</div>
