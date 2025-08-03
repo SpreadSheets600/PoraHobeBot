@@ -57,7 +57,6 @@ ADMIN = [
 ]
 
 
-
 dotenv.load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
@@ -94,12 +93,21 @@ def save_note_to_db(title, file_url, channel_id, user_id, subject):
         import datetime
 
         timestamp = datetime.datetime.utcnow().isoformat()
+        user_name = None
+
+        if isinstance(user_id, (tuple, list)) and len(user_id) == 2:
+            user_id, user_name = user_id
+        elif hasattr(user_id, "__iter__") and not isinstance(user_id, str):
+            user_id, user_name = list(user_id)[:2]
+        else:
+            user_name = None
+
         cursor.execute(
             """
-            INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags, user_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (title, "", file_url, str(channel_id), str(user_id), timestamp, subject),
+            (title, "", file_url, str(channel_id), str(user_id), timestamp, subject, user_name),
         )
         conn.commit()
         conn.close()
@@ -116,6 +124,7 @@ def upload_file():
     user_id = session.get("user_id")
     username = session.get("username")
     avatar_url = session.get("avatar_url")
+    user_info = (user_id, username)
 
     if request.method == "POST":
         subject = request.form.get("subject", "").strip().lower()
@@ -174,7 +183,7 @@ def upload_file():
                     flash(f"Failed To Notify Via Discord Bot : {e}", "error")
 
                 save_note_to_db(
-                    note_title, file_url, SUBJECT_CHANNELS[subject], user_id, subject
+                    note_title, file_url, SUBJECT_CHANNELS[subject], user_info, subject
                 )
 
             flash("File(s) Uploaded And Will Be Sent To Discord!", "success")
@@ -199,7 +208,7 @@ def upload_file():
             except Exception as e:
                 flash(f"Failed To Notify Via Discord Bot : {e}", "error")
 
-            save_note_to_db(link, link, SUBJECT_CHANNELS[subject], user_id, subject)
+            save_note_to_db(link, link, SUBJECT_CHANNELS[subject], user_info, subject)
             flash("Link Uploaded And Will Be Sent To Discord!", "success")
 
             return redirect(request.url)
@@ -318,7 +327,6 @@ def uploaded_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
-# DownloadButton class must be defined before usage
 class DownloadButton(discord.ui.View):
     def __init__(self, download_link: str):
         super().__init__(timeout=None)
@@ -403,7 +411,19 @@ def view_notes():
     notes = cursor.fetchall()
     conn.close()
 
-    notes = [dict(note) for note in notes]
+    wallpaper_tags = [
+            "AI",
+            "Anime",
+            "Nature",
+            "Abstract",
+            "Minimal",
+            "Space",
+            "City",
+            "Other",
+            "wallpaper",
+        ]
+
+    notes = [dict(note) for note in notes if note['tags'] not in wallpaper_tags]
     subjects = list(SUBJECT_CHANNELS.keys())
 
     total_users = len(set(note["user_id"] for note in notes if note["user_id"]))
@@ -425,6 +445,7 @@ def view_notes():
         username=username,
         avatar_url=avatar_url,
         total_users=total_users,
+        wallpaper_tags=wallpaper_tags,
     )
 
 
@@ -633,17 +654,36 @@ def upload_wallpapers():
         username = session.get("username")
         avatar_url = session.get("avatar_url")
 
+        tag_filter = request.args.get("tag", "").strip()
+
         conn = sqlite3.connect("notes.db")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM notes WHERE tags='wallpaper' ORDER BY timestamp DESC"
-        )
+        if tag_filter:
+            cursor.execute(
+                "SELECT * FROM notes WHERE tags=? AND channel_id='wallpaper' ORDER BY timestamp DESC",
+                (tag_filter,),
+            )
+        else:
+            cursor.execute(
+                "SELECT * FROM notes WHERE channel_id='wallpaper' ORDER BY timestamp DESC"
+            )
         wallpapers = cursor.fetchall()
         conn.close()
 
         wallpapers = [dict(w) for w in wallpapers]
         user_id = session.get("user_id")
+
+        wallpaper_tags = [
+            "AI",
+            "Anime",
+            "Nature",
+            "Abstract",
+            "Minimal",
+            "Space",
+            "City",
+            "Other",
+        ]
 
         return render_template(
             "wallpapers.html",
@@ -651,6 +691,8 @@ def upload_wallpapers():
             user_id=user_id,
             username=username,
             avatar_url=avatar_url,
+            wallpaper_tags=wallpaper_tags,
+            selected_tag=tag_filter,
         )
 
     elif request.method == "POST":
@@ -659,7 +701,10 @@ def upload_wallpapers():
             return redirect(url_for("login"))
 
         user_id = session.get("user_id")
+        username = session.get("username")
         files = request.files.getlist("wallpaper")
+        wallpaper_tag = request.form.get("wallpaper_tag", "Other")
+        user_info = (user_id, username)
 
         if not files or all(f.filename == "" for f in files):
             flash("No Wallpaper Selected.", "error")
@@ -709,10 +754,11 @@ def upload_wallpapers():
                 conn = sqlite3.connect("notes.db")
                 cursor = conn.cursor()
                 timestamp = datetime.datetime.utcnow().isoformat()
+
                 cursor.execute(
                     """
-                    INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags, thumbnail_url)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags, thumbnail_url, user_name)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         filename,
@@ -721,8 +767,9 @@ def upload_wallpapers():
                         "wallpaper",
                         str(user_id),
                         timestamp,
-                        "wallpaper",
+                        wallpaper_tag,
                         thumbnail_url,
+                        username,
                     ),
                 )
                 conn.commit()
@@ -784,6 +831,23 @@ async def on_ready():
     print("--------------------------------")
 
     print("----- + Database Initialized + -----")
+
+    conn = sqlite3.connect("notes.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, user_name FROM notes")
+    for row in cursor.fetchall():
+        user_id, user_name = row
+        if not user_name:
+            user = await bot.fetch_user(user_id)
+            if user:
+                print(f"User ID: {user.id} | Username: {user.display_name}")
+                cursor.execute(
+                    "UPDATE notes SET user_name = ? WHERE user_id = ? AND (user_name IS NULL OR user_name = '')",
+                    (user.display_name, user_id),
+                )
+    conn.commit()
+    conn.close()
+    print("----- + Database Updated + -----")
 
 
 bot.load_extension("cogs.notes")
