@@ -101,5 +101,5 @@ def get_note_by_id(conn, note_id):
 
 def update_table(conn):
     cursor = conn.cursor()
-    cursor.execute("ALTER TABLE notes ADD COLUMN thumbnail_url TEXT;")
+    # cursor.execute("ALTER TABLE notes ADD COLUMN user_name TEXT;")
     conn.commit()
