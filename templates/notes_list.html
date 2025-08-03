@@ -76,7 +76,7 @@
       <div class="space-y-4">
         {% if notes %}
         {% for note in notes %}
-        {% if note['tags'] != 'wallpaper' %}
+        {% if note['tags'] not in wallpaper_tags %}
         <div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-lg transition-shadow duration-300">
           <div class="card-body p-4">
             <div class="flex flex-col sm:flex-row sm:justify-between gap-4">
@@ -99,6 +99,7 @@
                 </h3>
                 <div class="text-xs sm:text-sm opacity-70 space-y-1 mt-2">
                   <div>Uploaded : {{ note['timestamp'][:19].replace('T', ' ') }}</div>
+                  <div>By: {{ note['user_name'] if note['user_name'] else note['user_id'] }}</div>
                 </div>
               </div>
               <div class="card-actions flex-shrink-0 self-end sm:self-center">
