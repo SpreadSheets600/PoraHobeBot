@@ -12,6 +12,15 @@
   {% include '_navbar.html' %}
   <div class="max-w-5xl mx-auto">
     <h2 class="text-3xl font-bold text-primary mb-6 text-center">Wallpapers Gallery</h2>
+    <form method="get" class="mb-6 flex flex-wrap gap-2 justify-center items-center">
+      <label for="tag-filter" class="font-semibold mr-2">Filter By Tag :</label>
+      <select name="tag" id="tag-filter" class="select select-bordered rounded-lg" onchange="this.form.submit()">
+        <option value="">All</option>
+        {% for tag in wallpaper_tags %}
+        <option value="{{ tag }}" {% if selected_tag == tag %}selected{% endif %}>{{ tag }}</option>
+        {% endfor %}
+      </select>
+    </form>
     {% if wallpapers %}
     <!-- Responsive grid for wallpapers -->
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -23,7 +32,8 @@
         </figure>
         <div class="card-body p-4">
           <h3 class="card-title text-lg font-semibold">{{ wallpaper.filename }}</h3>
-          <p class="text-xs opacity-60">Uploaded by: {{ wallpaper.user_id }}</p>
+          <span class="badge badge-outline badge-primary mb-2">{{ wallpaper.tags }}</span>
+          <p class="text-xs opacity-60">Uploaded by: {{ wallpaper.user_name if wallpaper.user_name else wallpaper.user_id }}</p>
           <p class="text-xs opacity-60">{{ wallpaper.timestamp }}</p>
           <div class="flex items-center mt-2">
             <a href="{{ wallpaper.file_url }}" class="btn btn-primary btn-sm mr-2" download>Download</a>
