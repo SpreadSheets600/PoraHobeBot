@@ -5,7 +5,17 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  const targetUrl = `http://dono-03.danbot.host:2521${req.url}`;
+  let targetPath;
+
+  if (req.url === "/frontpage") {
+    targetPath = "/frontpages";
+  } else if (req.url === "/wallpaper") {
+    targetPath = "/wallpapers";
+  } else {
+    targetPath = "/";
+  }
+
+  const targetUrl = `http://dono-03.danbot.host:2521${targetPath}`;
 
   const getRawBody = async (req) => {
     return new Promise((resolve, reject) => {
@@ -40,10 +50,9 @@ export default async function handler(req, res) {
     res.send(buffer);
   } catch (err) {
     console.error("Proxy error:", err.message);
-
     res.status(502).json({
       error: "Bad Gateway",
-      message: "The Target Server Is Unavailabe Please Try Again Later, Or Contact SOHAM",
+      message: "The Target Server Is Unavailable. Please Try Again Later, Or Contact SOHAM.",
     });
   }
 }
