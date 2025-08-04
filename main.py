@@ -170,7 +170,7 @@ def upload_file():
 
                 try:
                     requests.post(
-                        "http://0.0.0.0:PORT/api/upload",
+                        f"http://0.0.0.0:{PORT}/api/upload",
                         json={
                             "subject": subject,
                             "user_id": user_id,
@@ -196,7 +196,7 @@ def upload_file():
 
             try:
                 requests.post(
-                    "http://0.0.0.0:PORT/api/upload",
+                    f"http://0.0.0.0:{PORT}/api/upload",
                     json={
                         "subject": subject,
                         "user_id": user_id,
@@ -379,6 +379,33 @@ def api_upload():
     bot.loop.create_task(send_note())
     return jsonify({"status": "ok"})
 
+@app.route("/api/formdata", methods=["POST"])
+def api_formdata():
+    data = request.json
+
+    subject = data.get("subject")
+    user_name = data.get("user_name")
+    User_reg_no = data.get("user_reg_no")
+    User_roll_no = data.get("user_roll_no")
+    User_semester = data.get("user_semester")
+
+    embed = discord.Embed(
+        title=f"Front Page By  {user_name}",
+        description=f"### Subject : {subject}",
+        color=discord.Color.green(),
+    )
+
+    embed.add_field(name="Registration Number", value=User_reg_no, inline=False)
+    embed.add_field(name="Roll Noumber", value=User_roll_no, inline=False)
+    embed.add_field(name="Semester", value=User_semester, inline=False)
+
+    channel_id = 1401998207222808687
+    channel = bot.get_channel(channel_id)
+
+    if channel:
+        bot.loop.create_task(channel.send(embed=embed))
+
+    return jsonify({"status": "ok"})
 
 @app.route("/notes", methods=["GET"])
 def view_notes():
@@ -527,14 +554,6 @@ def delete_note(note_id):
 
 @app.route("/frontpages", methods=["GET", "POST"])
 def generate_frontpage():
-    if not session.get("user_id"):
-        flash("Please Log In With Discord Use This Feature", "error")
-        return redirect(url_for("login"))
-
-    user_id = session.get("user_id")
-    username = session.get("username")
-    avatar_url = session.get("avatar_url")
-
     subject_codes = {
         "Data Structures & Algorithms Lab": "PCC - CS391",
         "Computer Organization Lab": "PCC - CS392",
@@ -548,7 +567,6 @@ def generate_frontpage():
         reg = request.form["reg"]
 
         subject = request.form["subject"]
-        section = request.form["section"]
 
         semester = int(request.form["semester"])
         if semester == 1:
@@ -560,62 +578,42 @@ def generate_frontpage():
         elif semester >= 4 and semester <= 8:
             semester_final = "4TH"
 
-        year = int(request.form["year"])
-        if year == 1:
-            year_final = "1ST"
-        elif year == 2:
-            year_final = "2ND"
-        elif year == 3:
-            year_final = "3RD"
-        elif year == 4:
-            year_final = "4TH"
-
         print(
-            f"Received Data : Name : {name} \nRoll : {roll} \nReg : {reg} \nSection : {section} \nSubject : {subject}"
+            f"Received Data : Name : {name} \nRoll : {roll} \nReg : {reg} \nSubject : {subject}"
         )
 
         subject_code = subject_codes.get(subject, "N/A")
 
-        img = Image.open("static/blank_template.png")
+        try:
+            requests.post(
+                f"http://0.0.0.0:{PORT}/api/formdata",
+                json={
+                    "subject": subject,
+                    "user_name": name,
+                    "user_reg_no": reg,
+                    "user_roll_no": roll,
+                    "user_semester": semester_final,
+                },
+            )
+        except Exception as e:
+            print(f"Failed To Notify Via Discord Bot : {e}")
+
+        img = Image.open("static/template.png")
         draw = ImageDraw.Draw(img)
 
         font = ImageFont.truetype("static/Sans.ttf", size=45)
 
-        x = 140
-        y = 800
-        line_height = 60
+        start_x = 530
+        start_y = 1060
+        line_gap = 87
 
-        draw.text((x, y), f"Name : {name}", font=font, fill="black")
-        draw.text((x, y + line_height), f"Roll No. : {roll}", font=font, fill="black")
-        draw.text((x, y + 2 * line_height), f"Reg No. : {reg}", font=font, fill="black")
-
-        draw.text((x, y + 4.5 * line_height), "Stream : CSE", font=font, fill="black")
-        draw.text(
-            (x, y + 5.5 * line_height), f"Section : {section}", font=font, fill="black"
-        )
-
-        draw.text(
-            (x, y + 7.5 * line_height),
-            f"Semester : {semester_final}",
-            font=font,
-            fill="black",
-        )
-        draw.text(
-            (x, y + 8.5 * line_height), f"Year : {year_final}", font=font, fill="black"
-        )
-
-        draw.text(
-            (x, y + 10.5 * line_height),
-            f"Subject Code : {subject_code}",
-            font=font,
-            fill="black",
-        )
-        draw.text(
-            (x, y + 11.5 * line_height),
-            f"Subject Name : {subject}",
-            font=font,
-            fill="black",
-        )
+        draw.text((start_x, start_y + 0 * line_gap), f"{name}", font=font, fill="black")
+        draw.text((start_x, start_y + 1 * line_gap), f"{roll}", font=font, fill="black")
+        draw.text((start_x, start_y + 2 * line_gap), f"{reg}", font=font, fill="black")
+        draw.text((start_x, start_y + 3 * line_gap), "CSE", font=font, fill="black")
+        draw.text((start_x, start_y + 4 * line_gap), f"{semester_final}", font=font, fill="black")
+        draw.text((start_x, start_y + 5 * line_gap), f"{subject_code}", font=font, fill="black")
+        draw.text((start_x, start_y + 6 * line_gap), f"{subject}", font=font, fill="black")
 
         img_io = io.BytesIO()
         img.save(img_io, "PNG")
@@ -637,9 +635,6 @@ def generate_frontpage():
     return render_template(
         "form.html",
         subjects=subjects,
-        user_id=user_id,
-        username=username,
-        avatar_url=avatar_url,
     )
 
 
@@ -704,7 +699,6 @@ def upload_wallpapers():
         username = session.get("username")
         files = request.files.getlist("wallpaper")
         wallpaper_tag = request.form.get("wallpaper_tag", "Other")
-        user_info = (user_id, username)
 
         if not files or all(f.filename == "" for f in files):
             flash("No Wallpaper Selected.", "error")
