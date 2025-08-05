@@ -409,71 +409,83 @@ def api_formdata():
 
 @app.route("/notes", methods=["GET"])
 def view_notes():
-    q = request.args.get("q", "").strip()
-    tag = request.args.get("tag", "").strip().lower()
-    conn = sqlite3.connect("notes.db")
+    if request.method == "GET":
+        if not session.get("user_id"):
+            flash("Please Log In With Discord Use This Feature", "error")
+            return redirect(url_for("login"))
+        
+        q = request.args.get("q", "").strip()
+        tag = request.args.get("tag", "").strip().lower()
+        conn = sqlite3.connect("notes.db")
 
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
 
-    query = "SELECT * FROM notes"
+        query = "SELECT * FROM notes"
 
-    params = []
-    filters = []
+        params = []
+        filters = []
 
-    if tag:
-        filters.append("tags = ?")
-        params.append(tag)
+        if tag:
+            filters.append("tags = ?")
+            params.append(tag)
 
-    if q:
-        filters.append("title LIKE ?")
-        params.append(f"%{q}%")
+        if q:
+            filters.append("title LIKE ?")
+            params.append(f"%{q}%")
 
-    if filters:
-        query += " WHERE " + " AND ".join(filters)
+        if filters:
+            query += " WHERE " + " AND ".join(filters)
 
-    query += " ORDER BY timestamp DESC"
+        query += " ORDER BY timestamp DESC"
 
-    cursor.execute(query, params)
-    notes = cursor.fetchall()
-    conn.close()
+        cursor.execute(query, params)
+        notes = cursor.fetchall()
+        conn.close()
 
-    wallpaper_tags = [
-            "AI",
-            "Anime",
-            "Nature",
-            "Abstract",
-            "Minimal",
-            "Space",
-            "City",
-            "Other",
-            "wallpaper",
-        ]
+        wallpaper_tags = [
+                "AI",
+                "Anime",
+                "Nature",
+                "Abstract",
+                "Minimal",
+                "Space",
+                "City",
+                "Other",
+                "wallpaper",
+            ]
 
-    notes = [dict(note) for note in notes if note['tags'] not in wallpaper_tags]
-    subjects = list(SUBJECT_CHANNELS.keys())
+        notes = [dict(note) for note in notes if note['tags'] not in wallpaper_tags]
+        subjects = list(SUBJECT_CHANNELS.keys())
 
-    total_users = len(set(note["user_id"] for note in notes if note["user_id"]))
+        total_users = len(set(note["user_id"] for note in notes if note["user_id"]))
 
-    is_admin = False
-    user_id = session.get("user_id")
-    username = session.get("username").split("#")[0]
-    avatar_url = session.get("avatar_url")
-    if user_id and int(user_id) in ADMIN:
-        is_admin = True
+        is_admin = False
+        user_id = session.get("user_id")
+        username = session.get("username")
 
-    return render_template(
-        "notes_list.html",
-        notes=notes,
-        subjects=subjects,
-        request=request,
-        is_admin=is_admin,
-        user_id=user_id,
-        username=username,
-        avatar_url=avatar_url,
-        total_users=total_users,
-        wallpaper_tags=wallpaper_tags,
-    )
+        if username:
+            username = username.split("#")[0]
+        else:
+            username = "Guest"
+        
+        avatar_url = session.get("avatar_url")
+        
+        if user_id and int(user_id) in ADMIN:
+            is_admin = True
+
+        return render_template(
+            "notes_list.html",
+            notes=notes,
+            subjects=subjects,
+            request=request,
+            is_admin=is_admin,
+            user_id=user_id,
+            username=username,
+            avatar_url=avatar_url,
+            total_users=total_users,
+            wallpaper_tags=wallpaper_tags,
+        )
 
 
 @app.route("/edit_note/<int:note_id>", methods=["GET", "POST"])
@@ -575,9 +587,27 @@ def generate_frontpage():
             semester_final = "2ND"
         elif semester == 3:
             semester_final = "3RD"
-        elif semester >= 4 and semester <= 8:
+        elif semester == 4:
             semester_final = "4TH"
+        elif semester == 5:
+            semester_final = "5TH"
+        elif semester == 6:
+            semester_final = "6TH"
+        elif semester == 7:
+            semester_final = "7TH"
+        elif semester == 8:
+            semester_final = "8TH"
+        else:
+            semester_final = "N/A"
 
+        stream = int(request.form["stream"])
+        if stream == 1:
+            final_stream = "CSE"
+        elif stream == 2:
+            final_stream = "IT"
+        elif stream == 3:
+            final_stream = "ECE"
+        
         print(
             f"Received Data : Name : {name} \nRoll : {roll} \nReg : {reg} \nSubject : {subject}"
         )
@@ -610,7 +640,7 @@ def generate_frontpage():
         draw.text((start_x, start_y + 0 * line_gap), f"{name}", font=font, fill="black")
         draw.text((start_x, start_y + 1 * line_gap), f"{roll}", font=font, fill="black")
         draw.text((start_x, start_y + 2 * line_gap), f"{reg}", font=font, fill="black")
-        draw.text((start_x, start_y + 3 * line_gap), "CSE", font=font, fill="black")
+        draw.text((start_x, start_y + 3 * line_gap), f"{final_stream}", font=font, fill="black")
         draw.text((start_x, start_y + 4 * line_gap), f"{semester_final}", font=font, fill="black")
         draw.text((start_x, start_y + 5 * line_gap), f"{subject_code}", font=font, fill="black")
         draw.text((start_x, start_y + 6 * line_gap), f"{subject}", font=font, fill="black")
