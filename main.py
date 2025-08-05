@@ -571,6 +571,9 @@ def generate_frontpage():
         "Computer Organization Lab": "PCC - CS392",
         "IT Workshop": "PCC - CS393",
         "Analog & Digital Electronics Lab": "ES - CS391",
+        "Electronic Device Lab": "EC - 391",
+        "Digital System Design": "EC - 392",
+        "Data Structure Lab": "ES - CS391"
     }
 
     if request.method == "POST":
@@ -607,6 +610,10 @@ def generate_frontpage():
             final_stream = "IT"
         elif stream == 3:
             final_stream = "ECE"
+
+            if subject == "Data Structures & Algorithms Lab":
+                subject = "Data Structure Lab"
+
         elif stream == 4:
             final_stream = "CSE AIML"
         else:
@@ -666,9 +673,17 @@ def generate_frontpage():
         "IT Workshop",
         "Analog & Digital Electronics Lab",
     ]
+
+    ece_subjects = [
+        "Data Structure Lab",
+        "Electronic Device Lab",
+        "Digital System Design",
+    ]
+
     return render_template(
         "form.html",
         subjects=subjects,
+        ece_subjects=ece_subjects,
     )
 
 
