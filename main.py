@@ -570,7 +570,7 @@ def generate_frontpage():
         "Data Structures & Algorithms Lab": "PCC - CS391",
         "Computer Organization Lab": "PCC - CS392",
         "IT Workshop": "PCC - CS393",
-        "Analog & Digital Electronics Lab": "ES - CS391",
+        "Analog & Digital Electronics Lab": "ESC - 391",
     }
 
     if request.method == "POST":
@@ -607,6 +607,8 @@ def generate_frontpage():
             final_stream = "IT"
         elif stream == 3:
             final_stream = "ECE"
+        elif stream == 3:
+            final_stream = "CSE AIML"
         
         print(
             f"Received Data : Name : {name} \nRoll : {roll} \nReg : {reg} \nSubject : {subject}"
