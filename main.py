@@ -570,7 +570,7 @@ def generate_frontpage():
         "Data Structures & Algorithms Lab": "PCC - CS391",
         "Computer Organization Lab": "PCC - CS392",
         "IT Workshop": "PCC - CS393",
-        "Analog & Digital Electronics Lab": "ES - CS391",
+        "Analog & Digital Electronics Lab": "ES - C391",
         "Electronic Device Lab": "EC - 391",
         "Digital System Design": "EC - 392",
         "Data Structure Lab": "ES - CS391"
