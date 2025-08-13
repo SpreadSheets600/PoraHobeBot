@@ -52,6 +52,14 @@
 							</svg>
 							Wallpaper
 						</button>
+						<button type="button" id="tab-instagram" class="tab !rounded-lg !px-4 !py-2" onclick="showTab('instagram')">
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2z" />
+								<circle cx="12" cy="12" r="3.5" />
+								<circle cx="17.5" cy="6.5" r="1" />
+							</svg>
+							Instagram
+						</button>
 					</div>
 					<form method="post" enctype="multipart/form-data" class="space-y-6" id="form-file">
 						<div>
@@ -211,16 +219,42 @@
 						</div>
 						<button type="submit" class="btn btn-primary w-full">Upload Wallpaper(s)</button>
 					</form>
+					<form method="post" action="/uploads/instagram" class="space-y-4 hidden" id="form-instagram">
+						<div>
+							<label class="block font-semibold mb-1">Instagram Post URL</label>
+							<input type="url" name="post_url" placeholder="https://www.instagram.com/p/xxxxxxx/" class="input input-bordered w-full rounded-lg" required />
+							<span class="text-xs text-gray-400 block mt-1">Paste the Instagram post link (must be public or accessible).</span>
+						</div>
+						<div>
+							<label class="block font-semibold mb-1">Tags</label>
+							<select name="wallpaper_tag" class="select select-bordered w-full rounded-lg" required>
+								<option value="" disabled selected>Select a tag</option>
+								<option value="AI">AI</option>
+								<option value="Anime">Anime</option>
+								<option value="Nature">Nature</option>
+								<option value="Abstract">Abstract</option>
+								<option value="Minimal">Minimal</option>
+								<option value="Space">Space</option>
+								<option value="City">City</option>
+								<option value="Other">Other</option>
+							</select>
+						</div>
+						<button type="submit" class="btn btn-primary w-full">Upload From Instagram</button>
+					</form>
 				</div>
 				<script>
 					function showTab(type) {
 						document.getElementById("form-file").classList.toggle("hidden", type !== "file");
 						document.getElementById("form-link").classList.toggle("hidden", type !== "link");
 						document.getElementById("form-wallpaper").classList.toggle("hidden", type !== "wallpaper");
+						document.getElementById("form-instagram").classList.toggle("hidden", type !== "instagram");
+
 						document.getElementById("tab-file").classList.toggle("tab-active", type === "file");
 						document.getElementById("tab-link").classList.toggle("tab-active", type === "link");
 						document.getElementById("tab-wallpaper").classList.toggle("tab-active", type === "wallpaper");
+						document.getElementById("tab-instagram").classList.toggle("tab-active", type === "instagram");
 					}
+
 					showTab("file");
 				</script>
 				{% else %}
