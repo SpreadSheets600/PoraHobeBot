@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13"
 
 [[package]]
@@ -197,6 +197,18 @@ wheels = [
 ]
 
 [[package]]
+name = "instaloader"
+version = "4.14.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/54/c3/55d75581c322a58adb3a9b10dd50a232b47cd7afb5feac86c47496d6e1d9/instaloader-4.14.2.tar.gz", hash = "sha256:e9205098e6ec494cdfe2aef6c56805084cef4008a06d4d78504301f42f8e4d33", size = 65978, upload-time = "2025-07-18T05:51:13.8Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/78/6d8b2dc432c98ff4592be740826605986846d866c53587f2e14937255642/instaloader-4.14.2-py3-none-any.whl", hash = "sha256:e8c72410405fcbfd16c6e0034a10bccce634d91d59b1b0664b7de813be9d27fd", size = 67970, upload-time = "2025-07-18T05:51:12.512Z" },
+]
+
+[[package]]
 name = "itsdangerous"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -351,6 +363,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "flask" },
+    { name = "instaloader" },
     { name = "pillow" },
     { name = "py-cord" },
     { name = "python-dotenv" },
@@ -362,6 +375,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "flask", specifier = ">=3.1.1" },
+    { name = "instaloader", specifier = ">=4.14.2" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "py-cord", git = "https://github.com/Pycord-Development/pycord" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
