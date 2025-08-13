@@ -2,6 +2,7 @@ import os
 import dotenv
 import discord
 import datetime
+import instaloader
 from flask import (
     Flask,
     request,
@@ -18,6 +19,7 @@ from flask import (
 from utils.database import get_note_by_id, update_note, update_table
 from PIL import Image, ImageDraw, ImageFont
 from werkzeug.utils import secure_filename
+from urllib.parse import urlparse
 import threading
 import requests
 import sqlite3
@@ -107,7 +109,16 @@ def save_note_to_db(title, file_url, channel_id, user_id, subject):
             INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags, user_name)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (title, "", file_url, str(channel_id), str(user_id), timestamp, subject, user_name),
+            (
+                title,
+                "",
+                file_url,
+                str(channel_id),
+                str(user_id),
+                timestamp,
+                subject,
+                user_name,
+            ),
         )
         conn.commit()
         conn.close()
@@ -379,6 +390,7 @@ def api_upload():
     bot.loop.create_task(send_note())
     return jsonify({"status": "ok"})
 
+
 @app.route("/api/formdata", methods=["POST"])
 def api_formdata():
     data = request.json
@@ -407,13 +419,14 @@ def api_formdata():
 
     return jsonify({"status": "ok"})
 
+
 @app.route("/notes", methods=["GET"])
 def view_notes():
     if request.method == "GET":
         if not session.get("user_id"):
             flash("Please Log In With Discord Use This Feature", "error")
             return redirect(url_for("login"))
-        
+
         q = request.args.get("q", "").strip()
         tag = request.args.get("tag", "").strip().lower()
         conn = sqlite3.connect("notes.db")
@@ -444,18 +457,18 @@ def view_notes():
         conn.close()
 
         wallpaper_tags = [
-                "AI",
-                "Anime",
-                "Nature",
-                "Abstract",
-                "Minimal",
-                "Space",
-                "City",
-                "Other",
-                "wallpaper",
-            ]
+            "AI",
+            "Anime",
+            "Nature",
+            "Abstract",
+            "Minimal",
+            "Space",
+            "City",
+            "Other",
+            "wallpaper",
+        ]
 
-        notes = [dict(note) for note in notes if note['tags'] not in wallpaper_tags]
+        notes = [dict(note) for note in notes if note["tags"] not in wallpaper_tags]
         subjects = list(SUBJECT_CHANNELS.keys())
 
         total_users = len(set(note["user_id"] for note in notes if note["user_id"]))
@@ -468,9 +481,9 @@ def view_notes():
             username = username.split("#")[0]
         else:
             username = "Guest"
-        
+
         avatar_url = session.get("avatar_url")
-        
+
         if user_id and int(user_id) in ADMIN:
             is_admin = True
 
@@ -573,7 +586,7 @@ def generate_frontpage():
         "Analog & Digital Electronics Lab": "ES - C391",
         "Electronic Device Lab": "EC - 391",
         "Digital System Design": "EC - 392",
-        "Data Structure Lab": "ES - CS391"
+        "Data Structure Lab": "ES - CS391",
     }
 
     if request.method == "POST":
@@ -618,7 +631,7 @@ def generate_frontpage():
             final_stream = "CSE AIML"
         else:
             final_stream = "N/A"
-        
+
         print(
             f"Received Data : Name : {name} \nRoll : {roll} \nReg : {reg} \nSubject : {subject}"
         )
@@ -651,10 +664,27 @@ def generate_frontpage():
         draw.text((start_x, start_y + 0 * line_gap), f"{name}", font=font, fill="black")
         draw.text((start_x, start_y + 1 * line_gap), f"{roll}", font=font, fill="black")
         draw.text((start_x, start_y + 2 * line_gap), f"{reg}", font=font, fill="black")
-        draw.text((start_x, start_y + 3 * line_gap), f"{final_stream}", font=font, fill="black")
-        draw.text((start_x, start_y + 4 * line_gap), f"{semester_final}", font=font, fill="black")
-        draw.text((start_x, start_y + 5 * line_gap), f"{subject_code}", font=font, fill="black")
-        draw.text((start_x, start_y + 6 * line_gap), f"{subject}", font=font, fill="black")
+        draw.text(
+            (start_x, start_y + 3 * line_gap),
+            f"{final_stream}",
+            font=font,
+            fill="black",
+        )
+        draw.text(
+            (start_x, start_y + 4 * line_gap),
+            f"{semester_final}",
+            font=font,
+            fill="black",
+        )
+        draw.text(
+            (start_x, start_y + 5 * line_gap),
+            f"{subject_code}",
+            font=font,
+            fill="black",
+        )
+        draw.text(
+            (start_x, start_y + 6 * line_gap), f"{subject}", font=font, fill="black"
+        )
 
         img_io = io.BytesIO()
         img.save(img_io, "PNG")
@@ -841,6 +871,109 @@ def serve_wallpaper(filename):
     response = send_from_directory(wallpaper_folder, filename)
     response.headers["Cache-Control"] = "public, max-age=31536000"
     return response
+
+
+@app.route("/uploads/instagram", methods=["POST"])
+def get_instagram_post():
+    if not session.get("user_id"):
+        flash("Please Log In With Discord Use This Feature", "error")
+        return redirect(url_for("login"))
+
+    post_url = request.form.get("post_url", "").strip()
+    if not post_url:
+        flash("No Instagram URL provided", "error")
+        return redirect(url_for("upload_file"))
+
+    user_id = session.get("user_id")
+    username = session.get("username")
+    wallpaper_tag = request.form.get("wallpaper_tag", "Other")
+
+    wallpaper_folder = os.path.join(app.config["UPLOAD_FOLDER"], "wallpapers")
+    os.makedirs(wallpaper_folder, exist_ok=True)
+    
+    thumbnail_folder = os.path.join(wallpaper_folder, "thumbnails")
+    os.makedirs(thumbnail_folder, exist_ok=True)
+
+    L = instaloader.Instaloader(
+        download_videos=False, save_metadata=False, post_metadata_txt_pattern=""
+    )
+    shortcode = urlparse(post_url).path.strip("/").split("/")[-1]
+    post = instaloader.Post.from_shortcode(L.context, shortcode)
+
+    sidecar_nodes = (
+        list(post.get_sidecar_nodes()) if post.typename == "GraphSidecar" else []
+    )
+    images = sidecar_nodes if sidecar_nodes else [post]
+
+    for idx, node in enumerate(images):
+        img_url = node.display_url if hasattr(node, "display_url") else post.url
+        temp_path = os.path.join(wallpaper_folder, f"temp_{shortcode}_{idx}")
+        L.download_pic(temp_path, img_url, mtime=post.date_utc)
+
+        temp_path_jpg = temp_path + ".jpg"
+
+        try:
+            with Image.open(temp_path_jpg) as img:
+                rgb_img = img.convert("RGB")
+                filename = (
+                    f"{shortcode}_{idx}.jpg"
+                    if idx > 0 or len(images) > 1
+                    else f"{shortcode}.jpg"
+                )
+                filename = secure_filename(filename)
+                save_path = os.path.join(wallpaper_folder, filename)
+                rgb_img.save(save_path, format="JPEG")
+        except Exception as e:
+            print(f"[Flask] Failed to process Instagram image: {e}")
+            continue
+        finally:
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
+        thumbnail_filename = f"thumb_{filename}"
+        thumbnail_path = os.path.join(thumbnail_folder, thumbnail_filename)
+        try:
+            with Image.open(save_path) as img:
+                img.thumbnail((400, 400))
+                img.save(thumbnail_path, format="JPEG")
+        except Exception as e:
+            print(f"[Flask] Failed to generate thumbnail for {filename}: {e}")
+
+        file_url = url_for("serve_wallpaper", filename=filename, _external=True)
+        thumbnail_url = url_for(
+            "serve_thumbnail", filename=thumbnail_filename, _external=True
+        )
+        timestamp = datetime.datetime.utcnow().isoformat()
+
+        try:
+            conn = sqlite3.connect("notes.db")
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO notes (title, content, file_url, channel_id, user_id, timestamp, tags, thumbnail_url, user_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    filename,
+                    "",
+                    file_url,
+                    "wallpaper",
+                    str(user_id),
+                    timestamp,
+                    wallpaper_tag,
+                    thumbnail_url,
+                    username,
+                ),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[Flask] Failed to save wallpaper to notes DB: {e}")
+
+    flash("Instagram post saved as wallpaper!", "success")
+    return redirect(url_for("upload_file"))
 
 
 def run_flask():
