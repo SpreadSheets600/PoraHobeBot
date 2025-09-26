@@ -1,8 +1,10 @@
 from flask_dance.contrib.google import make_google_blueprint
 from flask_dance.consumer.storage.sqla import SQLAlchemyStorage
+from flask_migrate import Migrate, upgrade
 from flask_sqlalchemy import SQLAlchemy
+from alembic.command import revision
 from flask_login import LoginManager
-from flask_migrate import Migrate
+from alembic.config import Config
 from flask import Flask
 
 db = SQLAlchemy()
@@ -41,5 +43,10 @@ def create_app():
         storage=SQLAlchemyStorage(OAuth, db.session),
     )
     app.register_blueprint(google_bp, url_prefix="/login")
+
+    with app.app_context():
+        config = Config("migrations/alembic.ini")
+        revision(config, autogenerate=True, message="Auto migration")
+        upgrade()
 
     return app
