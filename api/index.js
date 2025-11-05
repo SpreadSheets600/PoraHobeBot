@@ -5,7 +5,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  const targetUrl = `http://dono-03.danbot.host:2521${req.url}`;
+  const targetUrl = `http://budget01.iccnex.ovh:25589${req.url}`;
 
   const getRawBody = async (req) => {
     return new Promise((resolve, reject) => {
