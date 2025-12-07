@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="mb-12 text-center">
+        <h1 class="font-display text-6xl font-bold tracking-tight mb-4">
+            <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Upload Notes
+            </span>
+        </h1>
+        <p class="font-mono text-gray-400">Share your knowledge with the community</p>
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        <div class="glass p-8 rounded-2xl space-y-6">
+            <!-- Title -->
+            <div>
+                <label class="block font-mono text-sm text-gray-400 mb-2">Title *</label>
+                <input type="text" name="title" required 
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition">
+            </div>
+            
+            <!-- Description -->
+            <div>
+                <label class="block font-mono text-sm text-gray-400 mb-2">Description</label>
+                <textarea name="description" rows="3"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition"></textarea>
+            </div>
+            
+            <!-- Subject -->
+            <div>
+                <label class="block font-mono text-sm text-gray-400 mb-2">Subject *</label>
+                <select name="subject" required
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition">
+                    <option value="">-- Select Subject --</option>
+                    {% for subject in subjects %}
+                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Type -->
+            <div>
+                <label class="block font-mono text-sm text-gray-400 mb-2">Type *</label>
+                <select name="note_type" id="note_type" onchange="toggleInputType()" required
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition">
+                    <option value="">-- Select Type --</option>
+                    <option value="file">File</option>
+                    <option value="link">Link</option>
+                </select>
+            </div>
+            
+            <!-- File Input -->
+            <div id="file_input" style="display: none;">
+                <label class="block font-mono text-sm text-gray-400 mb-2">Files (Multiple allowed)</label>
+                <input type="file" name="files" multiple
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-500/20 file:text-blue-400 file:font-mono file:text-sm hover:file:bg-blue-500/30">
+            </div>
+            
+            <!-- Link Input -->
+            <div id="link_input" style="display: none;">
+                <label class="block font-mono text-sm text-gray-400 mb-2">Links (one per line)</label>
+                <textarea name="links" rows="5"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition"></textarea>
+            </div>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button type="submit" class="btn-magnetic glass px-8 py-4 rounded-xl font-mono font-semibold border-2 border-blue-500/50 hover:border-blue-400 animate-glow">
+                Upload
+            </button>
+            <a href="{{ url_for('notes.list') }}" class="btn-magnetic glass px-8 py-4 rounded-xl font-mono font-semibold hover:bg-white/5">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleInputType() {
+        const type = document.getElementById('note_type').value;
+        const fileInput = document.getElementById('file_input');
+        const linkInput = document.getElementById('link_input');
+        
+        if (type === 'file') {
+            fileInput.style.display = 'block';
+            linkInput.style.display = 'none';
+        } else if (type === 'link') {
+            fileInput.style.display = 'none';
+            linkInput.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}
