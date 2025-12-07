@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="mb-8">
+        <a href="{{ url_for('admin.dashboard') }}" class="inline-flex items-center gap-2 font-mono text-sm text-gray-400 hover:text-purple-400 transition mb-6">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Dashboard
+        </a>
+        
+        <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+            <span class="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                Manage Subjects
+            </span>
+        </h1>
+    </div>
+    
+    <!-- Add Form -->
+    <form method="POST" action="{{ url_for('admin.add_subject') }}" class="glass p-6 rounded-2xl mb-8">
+        <div class="flex flex-col sm:flex-row gap-4">
+            <input type="text" name="name" placeholder="New subject name" required
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-purple-500 transition">
+            <button type="submit" class="btn-magnetic glass px-8 py-3 rounded-xl font-mono font-semibold border-2 border-purple-500/50 hover:border-purple-400">
+                Add
+            </button>
+        </div>
+    </form>
+    
+    <!-- Subjects List -->
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-white/5 border-b border-white/10">
+                    <tr>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">ID</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Name</th>
+                        <th class="px-6 py-4 text-right font-mono text-sm text-gray-400 whitespace-nowrap">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject in subjects %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ subject.id }}</td>
+                        <td class="px-6 py-4 font-mono whitespace-nowrap">{{ subject.name }}</td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
+                            <form method="POST" action="{{ url_for('admin.delete_subject', id=subject.id) }}" class="inline">
+                                <button type="submit" onclick="return confirm('Delete this subject?')" class="px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-sm hover:bg-red-500/30 transition">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
