@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="mb-8 text-center">
+        <a href="{{ url_for('notes.list') }}" class="inline-flex items-center gap-2 font-mono text-sm text-gray-400 hover:text-blue-400 transition mb-6">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Notes
+        </a>
+        
+        <h1 class="font-display text-5xl font-bold tracking-tight mb-4">
+            {{ note.title }}
+        </h1>
+        
+        <div class="flex flex-wrap gap-3 mb-6 justify-center">
+            <span class="px-4 py-2 bg-blue-500/20 border border-blue-500/50 rounded-lg font-mono text-sm">
+                {{ note.subject.name }}
+            </span>
+            <span class="px-4 py-2 bg-purple-500/20 border border-purple-500/50 rounded-lg font-mono text-sm">
+                {{ note.note_type.name }}
+            </span>
+            <span class="glass rounded-lg font-mono text-sm text-gray-400 flex items-center gap-2 px-3 py-2">
+                <img src="https://api.dicebear.com/9.x/thumbs/svg?seed={{ note.user.email }}" alt="{{ note.user.name }} Avatar" class="w-6 h-6 rounded-full">
+                by {{ note.user.name }}
+            </span>
+            <span class="px-4 py-2 glass rounded-lg font-mono text-sm text-gray-400">
+                {{ note.created_at.strftime('%b %d, %Y') }}
+            </span>
+        </div>
+        
+        {% if note.description %}
+        <p class="font-mono text-gray-300 mb-6">{{ note.description }}</p>
+        {% endif %}
+    </div>
+    
+    <!-- Preview Area -->
+    <div class="glass p-8 rounded-2xl mb-8">
+        {% if note.original_link %}
+            <div class="text-center">
+                <p class="font-mono text-sm text-gray-400 mb-4">External Link</p>
+                <a href="{{ note.presigned_url }}" target="_blank" class="inline-flex items-center gap-2 font-mono text-blue-400 hover:text-blue-300 transition break-all">
+                    {{ note.presigned_url }}
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+            </div>
+        {% else %}
+            {% set ext = note.link.split('.')[-1].lower() %}
+            
+            {% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}
+                <img src="{{ note.presigned_url }}" class="w-full rounded-xl" alt="{{ note.title }}">
+            {% elif ext == 'pdf' %}
+                <iframe src="{{ note.presigned_url }}" class="w-full h-[600px] rounded-xl bg-white/5"></iframe>
+            {% elif ext in ['mp4', 'webm', 'ogg'] %}
+                <video controls class="w-full rounded-xl">
+                    <source src="{{ note.presigned_url }}" type="video/{{ ext }}">
+                </video>
+            {% elif ext in ['mp3', 'wav', 'ogg'] %}
+                <audio controls class="w-full">
+                    <source src="{{ note.presigned_url }}" type="audio/{{ ext }}">
+                </audio>
+            {% elif ext in ['txt', 'md'] %}
+                <iframe src="{{ note.presigned_url }}" class="w-full h-[600px] rounded-xl bg-white/5"></iframe>
+            {% else %}
+                <div class="text-center py-12">
+                    <p class="font-mono text-gray-400 mb-4">Preview not available for this file type</p>
+                    <p class="font-mono text-sm text-gray-500">{{ note.link.split('/')[-1] }}</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <!-- Actions -->
+    <div class="flex gap-4 justify-center">
+        {% if note.presigned_url %}
+        <a href="{{ note.presigned_url }}" download class="btn-magnetic glass px-8 py-4 rounded-xl font-mono font-semibold border-2 border-blue-500/50 hover:border-blue-400 animate-glow">
+            Download
+        </a>
+        {% endif %}
+        <a href="{{ url_for('notes.share', id=note.id) }}" class="btn-magnetic glass px-8 py-4 rounded-xl font-mono font-semibold hover:bg-white/5">
+            Share
+        </a>
+    </div>
+</div>
+{% endblock %}
