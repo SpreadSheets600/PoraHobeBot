@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+  <div class="mb-8 text-center">
+    <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-2">
+      <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        Activity Feed
+      </span>
+    </h1>
+    <p class="font-mono text-sm text-gray-400">Recent uploads from the community</p>
+  </div>
+
+  {% if recent_notes %}
+  <div class="space-y-3">
+    {% for note in recent_notes %}
+    <a href="{{ url_for('notes.preview', id=note.id) }}"
+      class="block glass p-4 rounded-xl hover:bg-white/5 hover:border-white/20 transition duration-300 group">
+      <div class="flex items-center gap-3">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full">
+          <img src="https://api.dicebear.com/9.x/thumbs/svg?seed={{ note.user.email }}"
+            alt="{{ note.user.name }} Avatar" class="w-full h-full rounded-full">
+        </div>
+
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono text-sm font-semibold">{{ note.user.name }}</span>
+            <span class="text-gray-600">•</span>
+            <span class="font-mono text-xs text-gray-500">{{ note.created_at.strftime('%b %d at %H:%M') }}</span>
+          </div>
+
+          <div class="font-mono text-xs text-gray-400 flex flex-wrap items-center gap-1">
+            <span>uploaded</span>
+            <span class="text-blue-400 group-hover:text-blue-300 transition">{{ note.title }}</span>
+            <span>in</span>
+            <span
+              class="px-2 py-0.5 bg-purple-500/20 border border-purple-500/50 rounded-md font-mono text-[10px] text-purple-300">
+              {{ note.subject.name }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="glass p-12 rounded-xl text-center">
+    <p class="font-mono text-gray-400">No recent activity</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
