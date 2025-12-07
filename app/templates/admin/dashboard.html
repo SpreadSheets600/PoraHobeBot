@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+  <div class="mb-12">
+    <h1 class="font-display text-6xl font-bold tracking-tight mb-4">
+      <span class="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+        Admin Dashboard
+      </span>
+    </h1>
+    <p class="font-mono text-gray-400">Manage your platform</p>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+    <div class="glass p-6 rounded-2xl card-hover">
+      <p class="font-mono text-sm text-gray-400 mb-2">Total Users</p>
+      <p class="font-display text-4xl font-bold text-blue-400">{{ users_count }}</p>
+    </div>
+    <div class="glass p-6 rounded-2xl card-hover">
+      <p class="font-mono text-sm text-gray-400 mb-2">Total Notes</p>
+      <p class="font-display text-4xl font-bold text-purple-400">{{ notes_count }}</p>
+    </div>
+    <div class="glass p-6 rounded-2xl card-hover">
+      <p class="font-mono text-sm text-gray-400 mb-2">Subjects</p>
+      <p class="font-display text-4xl font-bold text-pink-400">{{ subjects_count }}</p>
+    </div>
+    <div class="glass p-6 rounded-2xl card-hover">
+      <p class="font-mono text-sm text-gray-400 mb-2">Note Types</p>
+      <p class="font-display text-4xl font-bold text-green-400">{{ note_types_count }}</p>
+    </div>
+  </div>
+
+  <!-- Management Links -->
+  <div class="glass p-8 rounded-2xl">
+    <h2 class="font-display text-2xl font-bold mb-6">Management</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <a href="{{ url_for('admin.subjects') }}" class="glass p-6 rounded-xl hover:bg-white/5 transition group">
+        <h3 class="font-display text-xl font-bold mb-2 group-hover:text-blue-400 transition">Subjects</h3>
+        <p class="font-mono text-sm text-gray-400">Add, edit, or remove subjects</p>
+      </a>
+      <a href="{{ url_for('admin.note_types') }}" class="glass p-6 rounded-xl hover:bg-white/5 transition group">
+        <h3 class="font-display text-xl font-bold mb-2 group-hover:text-purple-400 transition">Note Types</h3>
+        <p class="font-mono text-sm text-gray-400">Manage note type categories</p>
+      </a>
+      <a href="{{ url_for('admin.notes') }}" class="glass p-6 rounded-xl hover:bg-white/5 transition group">
+        <h3 class="font-display text-xl font-bold mb-2 group-hover:text-pink-400 transition">Notes</h3>
+        <p class="font-mono text-sm text-gray-400">View and moderate all notes</p>
+      </a>
+      <a href="{{ url_for('admin.users') }}" class="glass p-6 rounded-xl hover:bg-white/5 transition group">
+        <h3 class="font-display text-xl font-bold mb-2 group-hover:text-green-400 transition">Users</h3>
+        <p class="font-mono text-sm text-gray-400">Manage user permissions</p>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
