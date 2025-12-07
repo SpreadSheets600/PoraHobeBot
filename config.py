@@ -16,3 +16,10 @@ class Config:
     DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID")
     DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     DISCORD_GUILD_ID = os.environ.get("DISCORD_GUILD_ID")
+
+    # S3 Storage Configuration
+    S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+
+    S3_ENDPOINT = os.environ.get("S3_ENDPOINT")
+    S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
+    S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID")
