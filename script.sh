@@ -6,6 +6,14 @@ MIGRATION_MESSAGE="Auto Migration Sync"
 
 export OAUTHLIB_INSECURE_TRANSPORT=1
 
+echo "[Script] Checking Migrations Directory ..."
+if [ ! -d "migrations" ]; then
+    echo "[Script] Initializing Migrations ..."
+    uv run flask --app "$APP_MODULE" db init
+else
+    echo "[Script] Migrations Directory Exists ..."
+fi
+
 echo "[Script] Ensuring Migrations Are Up To Date ..."
 uv run flask --app "$APP_MODULE" db migrate -m "$MIGRATION_MESSAGE"
 
