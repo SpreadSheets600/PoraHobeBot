@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="mb-8">
+        <a href="{{ url_for('admin.dashboard') }}" class="inline-flex items-center gap-2 font-mono text-sm text-gray-400 hover:text-purple-400 transition mb-6">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Dashboard
+        </a>
+        
+        <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+            <span class="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                Manage Notes
+            </span>
+        </h1>
+    </div>
+    
+    <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-white/5 border-b border-white/10">
+                    <tr>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">ID</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Title</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Subject</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Type</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">User</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Date</th>
+                        <th class="px-6 py-4 text-right font-mono text-sm text-gray-400 whitespace-nowrap">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for note in notes %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition">
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.id }}</td>
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap max-w-xs truncate" title="{{ note.title }}">{{ note.title }}</td>
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.subject.name }}</td>
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.note_type.name }}</td>
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.user.name }}</td>
+                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
+                            <form method="POST" action="{{ url_for('admin.delete_note', id=note.id) }}" class="inline">
+                                <button type="submit" onclick="return confirm('Delete this note?')" class="px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-sm hover:bg-red-500/30 transition">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
