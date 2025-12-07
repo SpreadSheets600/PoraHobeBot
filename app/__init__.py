@@ -1,6 +1,11 @@
+import os
 from typing import Optional
 
 from flask import Flask, flash, redirect, url_for
+
+# Allow OAuth scope to change (e.g. Discord adding 'guilds.join') without raising an error
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
 from flask_dance.consumer import oauth_authorized, oauth_error
 from flask_dance.contrib.discord import make_discord_blueprint
 from flask_dance.contrib.google import make_google_blueprint
@@ -24,8 +29,12 @@ def create_app():
         return User.query.get(int(user_id))
 
     from .blueprints.main import main_bp
+    from .blueprints.notes import notes_bp
+    from .blueprints.admin import admin_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(notes_bp, url_prefix="/notes")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
     google_bp = make_google_blueprint(
         client_id=app.config["GOOGLE_CLIENT_ID"],
@@ -56,9 +65,6 @@ def create_app():
         token: dict,
     ):
         if not email:
-            flash(
-                f"{provider_name.title()} Account Must Contain A Public Email.", "error"
-            )
             return False
 
         if current_user.is_authenticated:
@@ -79,7 +85,6 @@ def create_app():
                 oauth.token = token
 
             db.session.commit()
-            flash(f"{provider_name.title()} Account Linked!", "success")
             return redirect(url_for("main.settings"))
 
         oauth = OAuth.query.filter_by(
@@ -108,18 +113,15 @@ def create_app():
         db.session.commit()
 
         login_user(user)
-        flash(f"Signed In With {provider_name.title()}", "success")
         return redirect(url_for("main.index"))
 
     @oauth_authorized.connect_via(google_bp)
     def google_logged_in(blueprint, token):
         if not token:
-            flash("Google Authentication Ffailed.", "error")
             return False
 
         resp = blueprint.session.get("/oauth2/v2/userinfo")
         if not resp.ok:
-            flash("Failed To load Google Profile.", "error")
             return False
 
         info = resp.json()
@@ -143,12 +145,10 @@ def create_app():
     @oauth_authorized.connect_via(discord_bp)
     def discord_logged_in(blueprint, token):
         if not token:
-            flash("Discord Authentication Failed.", "error")
             return False
 
         resp = blueprint.session.get("/api/users/@me")
         if not resp.ok:
-            flash("Failed To Load Discord Profile.", "error")
             return False
 
         info = resp.json()
@@ -169,6 +169,5 @@ def create_app():
     def oauth_error_handler(blueprint, error, error_description=None, error_uri=None):
         message = f"{blueprint.name.title()} OAuth error: {error_description or error}"
         app.logger.error(message)
-        flash(message, "error")
 
     return app
