@@ -1,13 +1,14 @@
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, redirect, render_template, url_for
 from flask_login import current_user, login_required, logout_user
 from flask_dance.contrib.discord import discord
 from flask_dance.contrib.google import google
+
+from app.models import Note
 
 main_bp = Blueprint("main", __name__)
 
 
 @main_bp.route("/")
-@login_required
 def index():
     return render_template("index.html")
 
@@ -32,11 +33,22 @@ def profile():
     google_profile = _safe_json(google, "/oauth2/v2/userinfo")
     discord_profile = _safe_json(discord, "/api/users/@me")
 
+    # Get user stats
+    total_uploads = Note.query.filter_by(user_id=current_user.id).count()
+    recent_uploads = (
+        Note.query.filter_by(user_id=current_user.id)
+        .order_by(Note.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
     return render_template(
         "profile.html",
         user=current_user,
         google_profile=google_profile,
         discord_profile=discord_profile,
+        total_uploads=total_uploads,
+        recent_uploads=recent_uploads,
     )
 
 
@@ -45,5 +57,4 @@ def profile():
 def logout():
     logout_user()
 
-    flash("Signed out successfully.", "info")
     return redirect(url_for("main.login"))
