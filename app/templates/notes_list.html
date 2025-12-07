@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="mb-8">
+        <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-2">
+            <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                All Notes
+            </span>
+        </h1>
+        <p class="font-mono text-sm text-gray-400">{{ notes|length }} notes available</p>
+    </div>
+    
+    <!-- Search & Filter -->
+    <form method="GET" class="glass p-4 rounded-xl mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input type="text" name="search" placeholder="Search..." value="{{ search or '' }}"
+                class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-blue-500 transition">
+            
+            <select name="subject"
+                class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-blue-500 transition">
+                <option value="">All Subjects</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject.id }}" {% if selected_subject == subject.id|string %}selected{% endif %}>
+                        {{ subject.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <select name="note_type"
+                class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-blue-500 transition">
+                <option value="">All Types</option>
+                {% for note_type in note_types %}
+                    <option value="{{ note_type.id }}" {% if selected_note_type == note_type.id|string %}selected{% endif %}>
+                        {{ note_type.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-blue-500/20 border border-blue-500/50 rounded-lg px-3 py-2 font-mono text-xs hover:bg-blue-500/30 transition">
+                    Filter
+                </button>
+                <a href="{{ url_for('notes.list') }}" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs text-center hover:bg-white/10 transition">
+                    Clear
+                </a>
+            </div>
+        </div>
+    </form>
+    
+    <!-- Notes Grid -->
+    {% if notes %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for note in notes %}
+        <div class="glass p-5 rounded-xl card-hover group">
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex-1">
+                    <h3 class="font-display text-lg font-bold mb-1 group-hover:text-blue-400 transition truncate">
+                        {{ note.title }}
+                    </h3>
+                    <div class="flex gap-2 mb-2">
+                        <span class="px-2 py-0.5 bg-blue-500/20 border border-blue-500/50 rounded-md font-mono text-[10px]">
+                            {{ note.subject.name }}
+                        </span>
+                        <span class="px-2 py-0.5 bg-purple-500/20 border border-purple-500/50 rounded-md font-mono text-[10px]">
+                            {{ note.note_type.name }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if note.description %}
+            <p class="font-mono text-xs text-gray-400 mb-3 line-clamp-2">{{ note.description }}</p>
+            {% endif %}
+            
+            <div class="flex items-center gap-2 mb-3 font-mono text-[10px] text-gray-500">
+                <img src="https://api.dicebear.com/9.x/thumbs/svg?seed={{ note.user.email }}" alt="{{ note.user.name }} Avatar" class="w-5 h-5 rounded-full">
+                <span>{{ note.user.name }}</span>
+                <span>•</span>
+                <span>{{ note.created_at.strftime('%b %d, %Y') }}</span>
+            </div>
+            
+            <div class="flex gap-2">
+                <a href="{{ url_for('notes.preview', id=note.id) }}" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 font-mono text-[10px] text-center hover:bg-white/10 transition">
+                    Preview
+                </a>
+                <a href="{{ url_for('notes.share', id=note.id) }}" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 font-mono text-[10px] text-center hover:bg-white/10 transition">
+                    Share
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass p-12 rounded-2xl text-center">
+        <p class="font-mono text-gray-400">No notes found</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
