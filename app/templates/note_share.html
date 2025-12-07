@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="min-h-[60vh] flex flex-col justify-center">
+        <div class="text-center mb-12">
+            <h1 class="font-display text-6xl font-bold tracking-tight mb-4">
+                <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                    Share Note
+                </span>
+            </h1>
+            <p class="font-mono text-gray-400">Copy the link below to share with others</p>
+        </div>
+        
+        <div class="glass p-8 rounded-2xl mb-8">
+            <h2 class="font-display text-2xl font-bold mb-2">{{ note.title }}</h2>
+            <div class="flex justify-center gap-2 mb-6">
+                <span class="px-2 py-0.5 bg-blue-500/20 border border-blue-500/50 rounded-md font-mono text-[10px] text-blue-300">
+                    {{ note.subject.name }}
+                </span>
+                <span class="px-2 py-0.5 bg-purple-500/20 border border-purple-500/50 rounded-md font-mono text-[10px] text-purple-300">
+                    {{ note.note_type.name }}
+                </span>
+            </div>
+            
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
+                <input type="text" id="share-url" value="{{ share_url }}" readonly
+                    class="w-full bg-transparent font-mono text-sm text-blue-400 focus:outline-none">
+            </div>
+            
+            <button onclick="copyToClipboard()" class="w-full btn-magnetic glass px-6 py-4 rounded-xl font-mono font-semibold border-2 border-blue-500/50 hover:border-blue-400 animate-glow">
+                Copy Link
+            </button>
+        </div>
+        
+        <div class="flex gap-4 justify-center">
+            <a href="{{ url_for('notes.preview', id=note.id) }}" class="font-mono text-sm text-gray-400 hover:text-blue-400 transition">
+                Back to Preview
+            </a>
+            <span class="text-gray-600">•</span>
+            <a href="{{ url_for('notes.list') }}" class="font-mono text-sm text-gray-400 hover:text-blue-400 transition">
+                All Notes
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyToClipboard() {
+        const shareUrl = document.getElementById('share-url');
+        shareUrl.select();
+        shareUrl.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('bg-green-500/20', 'border-green-500/50');
+        
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('bg-green-500/20', 'border-green-500/50');
+        }, 2000);
+    }
+</script>
+{% endblock %}
