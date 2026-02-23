@@ -29,3 +29,5 @@ Flask application for sharing and organizing notes.
 
 - The app listens on port `7860`.
 - DB migrations run at startup by default. Set `RUN_MIGRATIONS=0` to skip.
+- If `migrations/` is missing, startup falls back to `db.create_all()` by default.
+- Set `RUN_CREATE_ALL_IF_NO_MIGRATIONS=0` to disable that fallback.
