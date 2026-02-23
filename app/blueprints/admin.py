@@ -1,4 +1,12 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for, current_app
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+    current_app,
+)
 from flask_login import current_user, login_required
 from functools import wraps
 
@@ -15,6 +23,7 @@ def admin_required(f):
         if not current_user.is_admin:
             return redirect(url_for("admin.verify"))
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -25,13 +34,13 @@ def dashboard():
     notes_count = Note.query.count()
     subjects_count = Subject.query.count()
     note_types_count = NoteType.query.count()
-    
+
     return render_template(
         "admin/dashboard.html",
         users_count=users_count,
         notes_count=notes_count,
         subjects_count=subjects_count,
-        note_types_count=note_types_count
+        note_types_count=note_types_count,
     )
 
 
@@ -40,7 +49,7 @@ def dashboard():
 def verify():
     if current_user.is_admin:
         return redirect(url_for("admin.dashboard"))
-    
+
     if request.method == "POST":
         code = request.form.get("code", "").strip()
         if code == current_app.config["ADMIN_SECRET_CODE"]:
@@ -49,7 +58,7 @@ def verify():
             return redirect(url_for("admin.dashboard"))
         else:
             pass
-    
+
     return render_template("admin/verify.html")
 
 

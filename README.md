@@ -126,6 +126,37 @@ For production environments, it is recommended to use a production-grade WSGI se
 gunicorn -w 4 -b 0.0.0.0:8000 "app:create_app()"
 ```
 
+## Docker Setup
+
+### Build
+
+```bash
+docker build -t porahobebot:latest .
+```
+
+### Run
+
+```bash
+docker run --rm -p 7860:7860 --env-file .env porahobebot:latest
+```
+
+App URL: `http://localhost:7860`
+
+## Deploy to Hugging Face Spaces (Docker)
+
+1. Create a new Space on Hugging Face with:
+   - SDK: `Docker`
+2. In your Space repository, use `README_SPACES.md` content as `README.md`.
+3. Add all runtime variables in Space Settings -> Variables and secrets (see `.env.example`).
+4. Push this code to your Space:
+
+```bash
+pip install -U "huggingface_hub[cli]"
+huggingface-cli login
+git remote add space https://huggingface.co/spaces/<YOUR_USERNAME>/<YOUR_SPACE_NAME>
+git push space main
+```
+
 ## License
 
 [Insert License Information Here]
