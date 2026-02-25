@@ -11,6 +11,23 @@
         <p class="font-mono text-sm text-gray-400">Share your knowledge with the community</p>
     </div>
     
+    <div class="glass p-4 rounded-xl mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs text-gray-300">
+            <div class="p-3 bg-white/5 rounded-lg border border-white/10">
+                <p class="text-blue-300 mb-1">Step 1</p>
+                <p>Set a clear title and choose the right subject tag.</p>
+            </div>
+            <div class="p-3 bg-white/5 rounded-lg border border-white/10">
+                <p class="text-blue-300 mb-1">Step 2</p>
+                <p>Upload files or paste one/many links (one per line).</p>
+            </div>
+            <div class="p-3 bg-white/5 rounded-lg border border-white/10">
+                <p class="text-blue-300 mb-1">Step 3</p>
+                <p>Add short notes so other students know what this contains.</p>
+            </div>
+        </div>
+    </div>
+
     <form method="POST" enctype="multipart/form-data" class="space-y-6">
         <div class="glass p-8 rounded-2xl space-y-6">
             <!-- Title -->
@@ -64,6 +81,7 @@
             <!-- Link Input -->
             <div id="link_input" style="display: none;">
                 <label class="block font-mono text-sm text-gray-400 mb-2">Links (one per line)</label>
+                <p class="font-mono text-xs text-gray-500 mb-2">YouTube videos, playlists, docs, and normal URLs are supported.</p>
                 <textarea name="links" rows="5"
                     class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono focus:outline-none focus:border-blue-500 transition"></textarea>
             </div>
@@ -87,6 +105,7 @@
     const dropzone = document.getElementById('file_dropzone');
     const filesField = document.getElementById('files');
     const fileCount = document.getElementById('selected_file_count');
+    const linksField = document.querySelector('textarea[name="links"]');
 
     function updateSelectedFileText(files) {
         if (!files || files.length === 0) {
@@ -153,5 +172,12 @@
     });
 
     toggleInputType();
+
+    linksField.addEventListener('focus', () => {
+        if (!noteTypeInput.value) {
+            noteTypeInput.value = 'link';
+            toggleInputType();
+        }
+    });
 </script>
 {% endblock %}

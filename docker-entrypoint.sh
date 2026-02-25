@@ -3,6 +3,20 @@ set -e
 
 mkdir -p instance
 
+# One-time migration for Spaces: move legacy ephemeral SQLite DB to persistent /data.
+if [ -d "/data" ]; then
+    TARGET_DB="/data/porahobebot.db"
+    if [ ! -f "$TARGET_DB" ]; then
+        for CANDIDATE in "/home/user/app/app.db" "/home/user/app/instance/app.db" "app.db" "instance/app.db"; do
+            if [ -f "$CANDIDATE" ]; then
+                echo "Migrating legacy database from $CANDIDATE to $TARGET_DB"
+                cp "$CANDIDATE" "$TARGET_DB"
+                break
+            fi
+        done
+    fi
+fi
+
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
     if [ -d migrations ]; then
         flask db upgrade

@@ -14,7 +14,7 @@
     {% if notes %}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for note in notes %}
-        <div class="glass p-5 rounded-xl card-hover group">
+        <div class="glass p-5 rounded-xl card-hover group cursor-pointer note-card" data-href="{{ url_for('notes.preview', id=note.id) }}" role="link" tabindex="0">
             <div class="flex items-start justify-between mb-3">
                 <div class="flex-1">
                     <h3 class="font-display text-lg font-bold mb-1 group-hover:text-blue-400 transition truncate">
@@ -40,8 +40,8 @@
             </div>
             
             <div class="flex gap-2">
-                <a href="{{ url_for('notes.preview', id=note.id) }}" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 font-mono text-[10px] text-center hover:bg-white/10 transition">
-                    Preview
+                <a href="{{ url_for('notes.edit', id=note.id) }}" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 font-mono text-[10px] text-center hover:bg-white/10 transition">
+                    Edit
                 </a>
                 <a href="{{ url_for('notes.share', id=note.id) }}" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 font-mono text-[10px] text-center hover:bg-white/10 transition">
                     Share
@@ -64,4 +64,23 @@
     </div>
     {% endif %}
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const cards = document.querySelectorAll('.note-card[data-href]');
+        cards.forEach((card) => {
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('a, button, input, select, textarea, form, label')) {
+                    return;
+                }
+                window.location.href = card.dataset.href;
+            });
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    window.location.href = card.dataset.href;
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

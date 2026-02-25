@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6">
+  <div class="mb-8">
+    <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-2">
+      <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        Edit Note
+      </span>
+    </h1>
+    <p class="font-mono text-sm text-gray-400">Update title, tags, and details</p>
+  </div>
+
+  <form method="POST" class="glass p-6 rounded-2xl space-y-5">
+    <div>
+      <label class="block font-mono text-sm text-gray-300 mb-2">Title</label>
+      <input type="text" name="title" required value="{{ note.title }}"
+        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-blue-500 transition">
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block font-mono text-sm text-gray-300 mb-2">Subject Tag</label>
+        <select name="subject" required
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-blue-500 transition">
+          {% for subject in subjects %}
+          <option value="{{ subject.id }}" {% if note.subject_id == subject.id %}selected{% endif %}>
+            {{ subject.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-mono text-sm text-gray-300 mb-2">Type Tag</label>
+        <input type="text" name="note_type" required value="{{ note.note_type.name }}"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-blue-500 transition">
+      </div>
+    </div>
+
+    <div>
+      <label class="block font-mono text-sm text-gray-300 mb-2">Description</label>
+      <textarea name="description" rows="4"
+        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-blue-500 transition">{{ note.description or '' }}</textarea>
+    </div>
+
+    {% if note.original_link %}
+    <div>
+      <label class="block font-mono text-sm text-gray-300 mb-2">External Link</label>
+      <input type="url" name="external_link" value="{{ note.original_link }}"
+        class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-blue-500 transition">
+    </div>
+    {% endif %}
+
+    <div class="flex flex-wrap gap-3 pt-2">
+      <button type="submit"
+        class="btn-magnetic glass px-8 py-3 rounded-xl font-mono font-semibold border-2 border-blue-500/50 hover:border-blue-400 animate-glow">
+        Save Changes
+      </button>
+      <a href="{{ url_for('notes.preview', id=note.id) }}"
+        class="btn-magnetic glass px-8 py-3 rounded-xl font-mono font-semibold hover:bg-white/5">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

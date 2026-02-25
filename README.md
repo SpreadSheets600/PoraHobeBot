@@ -82,8 +82,8 @@ Create a `.env` file in the project root directory. You can copy the structure f
 # Core Security
 SECRET_KEY=your_secure_random_key
 
-# Database
-DATABASE_URL=sqlite:///app.db
+# Database (for Hugging Face Spaces persistence)
+DATABASE_URL=sqlite:////data/porahobebot.db
 
 # Authentication (Optional if not using OAuth)
 GOOGLE_CLIENT_ID=your_google_client_id

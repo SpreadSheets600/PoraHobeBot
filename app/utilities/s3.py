@@ -1,9 +1,14 @@
 import mimetypes
+import time
+from threading import Lock
 
 import boto3
 from botocore.config import Config
 from flask import current_app
 from flask_login import current_user
+
+_PRESIGNED_URL_CACHE = {}
+_CACHE_LOCK = Lock()
 
 
 def get_s3_client():
@@ -26,6 +31,14 @@ def get_s3_client():
 
 
 def generate_presigned_url(key, expiration=3600):
+    cache_key = (key, int(expiration))
+    now = time.time()
+
+    with _CACHE_LOCK:
+        cached = _PRESIGNED_URL_CACHE.get(cache_key)
+        if cached and cached["expires_at"] > now:
+            return cached["url"]
+
     s3_client = get_s3_client()
     bucket = current_app.config["S3_BUCKET_NAME"]
 
@@ -34,6 +47,19 @@ def generate_presigned_url(key, expiration=3600):
         Params={"Bucket": bucket, "Key": key},
         ExpiresIn=expiration,
     )
+
+    with _CACHE_LOCK:
+        # Keep a short buffer to avoid serving stale links close to expiry.
+        _PRESIGNED_URL_CACHE[cache_key] = {
+            "url": presigned_url,
+            "expires_at": now + max(1, int(expiration) - 30),
+        }
+        # Opportunistic cleanup to avoid unbounded growth.
+        expired_keys = [
+            k for k, v in _PRESIGNED_URL_CACHE.items() if v["expires_at"] <= now
+        ]
+        for expired_key in expired_keys:
+            _PRESIGNED_URL_CACHE.pop(expired_key, None)
 
     return presigned_url
 
