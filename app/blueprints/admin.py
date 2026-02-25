@@ -1,14 +1,22 @@
 from flask import (
     Blueprint,
+    abort,
+    after_this_request,
     flash,
     redirect,
     render_template,
     request,
+    send_file,
     url_for,
     current_app,
 )
 from flask_login import current_user, login_required
 from functools import wraps
+import os
+import sqlite3
+import tempfile
+from datetime import datetime
+from sqlalchemy.engine import make_url
 
 from app.extensions import db
 from app.models import Note, NoteType, Subject, User
@@ -157,3 +165,48 @@ def toggle_admin(id):
         user.is_admin = not user.is_admin
         db.session.commit()
     return redirect(url_for("admin.users"))
+
+
+@admin_bp.route("/export-db")
+@admin_required
+def export_db():
+    uri = current_app.config.get("SQLALCHEMY_DATABASE_URI", "")
+    try:
+        parsed = make_url(uri)
+    except Exception:
+        abort(400, "Invalid database URL.")
+
+    if parsed.drivername != "sqlite":
+        abort(400, "Export endpoint only supports SQLite source databases.")
+
+    if not parsed.database or parsed.database == ":memory:":
+        abort(400, "In-memory SQLite database cannot be exported.")
+
+    db_path = parsed.database
+    if not os.path.isabs(db_path):
+        db_path = os.path.abspath(db_path)
+
+    if not os.path.exists(db_path):
+        abort(404, "Database file not found.")
+
+    fd, backup_path = tempfile.mkstemp(prefix="porahobe_backup_", suffix=".db")
+    os.close(fd)
+
+    src = sqlite3.connect(db_path)
+    dst = sqlite3.connect(backup_path)
+    try:
+        src.backup(dst)
+    finally:
+        src.close()
+        dst.close()
+
+    @after_this_request
+    def _cleanup(response):
+        try:
+            os.remove(backup_path)
+        except OSError:
+            pass
+        return response
+
+    filename = f"porahobe_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
+    return send_file(backup_path, as_attachment=True, download_name=filename)
