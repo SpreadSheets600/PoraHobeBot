@@ -18,15 +18,17 @@
         </div>
     </div>
     
-    <div class="glass rounded-2xl overflow-hidden">
+    <div class="glass rounded-2xl overflow-hidden hidden md:block">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-white/5 border-b border-white/10">
                     <tr>
                         <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">ID</th>
                         <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Title</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Description</th>
                         <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Subject</th>
                         <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Type</th>
+                        <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Link</th>
                         <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">User</th>
                         <th class="px-6 py-4 text-left font-mono text-sm text-gray-400 whitespace-nowrap">Date</th>
                         <th class="px-6 py-4 text-right font-mono text-sm text-gray-400 whitespace-nowrap">Actions</th>
@@ -36,23 +38,101 @@
                     {% for note in notes %}
                     <tr class="border-b border-white/5 hover:bg-white/5 transition">
                         <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.id }}</td>
-                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap max-w-xs truncate" title="{{ note.title }}">{{ note.title }}</td>
-                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.subject.name }}</td>
-                        <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.note_type.name }}</td>
+                        <td class="px-6 py-4">
+                            <form id="edit-note-{{ note.id }}" method="POST" action="{{ url_for('admin.update_note', id=note.id) }}" class="space-y-2 min-w-[220px]">
+                                <input type="text" name="title" value="{{ note.title }}" required
+                                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                        </td>
+                        <td class="px-6 py-4 min-w-[220px]">
+                                <textarea name="description" rows="2"
+                                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">{{ note.description or '' }}</textarea>
+                        </td>
+                        <td class="px-6 py-4 min-w-[160px]">
+                                <select name="subject_id"
+                                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                                    {% for subject in subjects %}
+                                    <option value="{{ subject.id }}" {% if note.subject_id == subject.id %}selected{% endif %}>{{ subject.name }}</option>
+                                    {% endfor %}
+                                </select>
+                        </td>
+                        <td class="px-6 py-4 min-w-[160px]">
+                                <select name="note_type_id"
+                                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                                    {% for note_type in note_types %}
+                                    <option value="{{ note_type.id }}" {% if note.note_type_id == note_type.id %}selected{% endif %}>{{ note_type.name }}</option>
+                                    {% endfor %}
+                                </select>
+                        </td>
+                        <td class="px-6 py-4 min-w-[220px]">
+                                {% if note.original_link %}
+                                <input type="url" name="link" value="{{ note.link }}"
+                                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                                {% else %}
+                                <span class="font-mono text-xs text-gray-500">File upload note</span>
+                                {% endif %}
+                            </form>
+                        </td>
                         <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.user.name }}</td>
                         <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ note.created_at.strftime('%Y-%m-%d') }}</td>
                         <td class="px-6 py-4 text-right whitespace-nowrap">
-                            <form method="POST" action="{{ url_for('admin.delete_note', id=note.id) }}" class="inline">
-                                <button type="submit" onclick="return confirm('Delete this note?')" class="px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-sm hover:bg-red-500/30 transition">
-                                    Delete
+                            <div class="flex items-center justify-end gap-2">
+                                <button type="submit" form="edit-note-{{ note.id }}" class="px-3 py-2 bg-blue-500/20 border border-blue-500/50 rounded-lg font-mono text-xs hover:bg-blue-500/30 transition">
+                                    Save
                                 </button>
-                            </form>
+                                <form method="POST" action="{{ url_for('admin.delete_note', id=note.id) }}" class="inline">
+                                    <button type="submit" onclick="return confirm('Delete this note?')" class="px-3 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-xs hover:bg-red-500/30 transition">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="space-y-3 md:hidden">
+        {% for note in notes %}
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-mono text-xs text-gray-500">#{{ note.id }}</span>
+                <span class="font-mono text-xs text-gray-500">{{ note.created_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+            <p class="font-mono text-xs text-gray-400 mb-3">by {{ note.user.name }}</p>
+            <form method="POST" action="{{ url_for('admin.update_note', id=note.id) }}" class="space-y-2">
+                <input type="text" name="title" value="{{ note.title }}" required
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                <textarea name="description" rows="2"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">{{ note.description or '' }}</textarea>
+                <select name="subject_id"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}" {% if note.subject_id == subject.id %}selected{% endif %}>{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="note_type_id"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                    {% for note_type in note_types %}
+                    <option value="{{ note_type.id }}" {% if note.note_type_id == note_type.id %}selected{% endif %}>{{ note_type.name }}</option>
+                    {% endfor %}
+                </select>
+                {% if note.original_link %}
+                <input type="url" name="link" value="{{ note.link }}"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-xs focus:outline-none focus:border-purple-500 transition">
+                {% endif %}
+                <button type="submit" class="w-full px-3 py-2 bg-blue-500/20 border border-blue-500/50 rounded-lg font-mono text-xs hover:bg-blue-500/30 transition">
+                    Save
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.delete_note', id=note.id) }}" class="mt-2">
+                <button type="submit" onclick="return confirm('Delete this note?')" class="w-full px-3 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-xs hover:bg-red-500/30 transition">
+                    Delete
+                </button>
+            </form>
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

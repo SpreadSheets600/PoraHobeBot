@@ -73,7 +73,7 @@ def verify():
 @admin_bp.route("/subjects")
 @admin_required
 def subjects():
-    subjects = Subject.query.all()
+    subjects = Subject.query.order_by(Subject.name.asc()).all()
     return render_template("admin/subjects.html", subjects=subjects)
 
 
@@ -92,6 +92,23 @@ def add_subject():
     return redirect(url_for("admin.subjects"))
 
 
+@admin_bp.route("/subjects/update/<int:id>", methods=["POST"])
+@admin_required
+def update_subject(id):
+    subject = Subject.query.get_or_404(id)
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect(url_for("admin.subjects"))
+
+    existing = Subject.query.filter_by(name=name).first()
+    if existing and existing.id != subject.id:
+        return redirect(url_for("admin.subjects"))
+
+    subject.name = name
+    db.session.commit()
+    return redirect(url_for("admin.subjects"))
+
+
 @admin_bp.route("/subjects/delete/<int:id>", methods=["POST"])
 @admin_required
 def delete_subject(id):
@@ -104,7 +121,7 @@ def delete_subject(id):
 @admin_bp.route("/note-types")
 @admin_required
 def note_types():
-    note_types = NoteType.query.all()
+    note_types = NoteType.query.order_by(NoteType.name.asc()).all()
     return render_template("admin/note_types.html", note_types=note_types)
 
 
@@ -123,6 +140,23 @@ def add_note_type():
     return redirect(url_for("admin.note_types"))
 
 
+@admin_bp.route("/note-types/update/<int:id>", methods=["POST"])
+@admin_required
+def update_note_type(id):
+    note_type = NoteType.query.get_or_404(id)
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect(url_for("admin.note_types"))
+
+    existing = NoteType.query.filter_by(name=name).first()
+    if existing and existing.id != note_type.id:
+        return redirect(url_for("admin.note_types"))
+
+    note_type.name = name
+    db.session.commit()
+    return redirect(url_for("admin.note_types"))
+
+
 @admin_bp.route("/note-types/delete/<int:id>", methods=["POST"])
 @admin_required
 def delete_note_type(id):
@@ -136,7 +170,43 @@ def delete_note_type(id):
 @admin_required
 def notes():
     notes = Note.query.order_by(Note.created_at.desc()).all()
-    return render_template("admin/notes.html", notes=notes)
+    subjects = Subject.query.order_by(Subject.name.asc()).all()
+    note_types = NoteType.query.order_by(NoteType.name.asc()).all()
+    return render_template(
+        "admin/notes.html", notes=notes, subjects=subjects, note_types=note_types
+    )
+
+
+@admin_bp.route("/notes/update/<int:id>", methods=["POST"])
+@admin_required
+def update_note(id):
+    note = Note.query.get_or_404(id)
+
+    title = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    subject_id = request.form.get("subject_id")
+    note_type_id = request.form.get("note_type_id")
+    link = request.form.get("link", "").strip()
+
+    if not title or not subject_id or not note_type_id:
+        return redirect(url_for("admin.notes"))
+
+    subject = Subject.query.get(subject_id)
+    note_type = NoteType.query.get(note_type_id)
+    if not subject or not note_type:
+        return redirect(url_for("admin.notes"))
+
+    note.title = title
+    note.description = description or None
+    note.subject_id = subject.id
+    note.note_type_id = note_type.id
+
+    if note.original_link is not None and link:
+        note.link = link
+        note.original_link = link
+
+    db.session.commit()
+    return redirect(url_for("admin.notes"))
 
 
 @admin_bp.route("/notes/delete/<int:id>", methods=["POST"])

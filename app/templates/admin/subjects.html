@@ -29,8 +29,8 @@
         </div>
     </form>
     
-    <!-- Subjects List -->
-    <div class="glass rounded-2xl overflow-hidden">
+    <!-- Subjects List (Desktop) -->
+    <div class="glass rounded-2xl overflow-hidden hidden md:block">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-white/5 border-b border-white/10">
@@ -44,7 +44,15 @@
                     {% for subject in subjects %}
                     <tr class="border-b border-white/5 hover:bg-white/5 transition">
                         <td class="px-6 py-4 font-mono text-sm whitespace-nowrap">{{ subject.id }}</td>
-                        <td class="px-6 py-4 font-mono whitespace-nowrap">{{ subject.name }}</td>
+                        <td class="px-6 py-4">
+                            <form method="POST" action="{{ url_for('admin.update_subject', id=subject.id) }}" class="flex gap-2">
+                                <input type="text" name="name" value="{{ subject.name }}" required
+                                    class="flex-1 min-w-[180px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:border-purple-500 transition">
+                                <button type="submit" class="px-3 py-2 bg-blue-500/20 border border-blue-500/50 rounded-lg font-mono text-xs hover:bg-blue-500/30 transition">
+                                    Save
+                                </button>
+                            </form>
+                        </td>
                         <td class="px-6 py-4 text-right whitespace-nowrap">
                             <form method="POST" action="{{ url_for('admin.delete_subject', id=subject.id) }}" class="inline">
                                 <button type="submit" onclick="return confirm('Delete this subject?')" class="px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-sm hover:bg-red-500/30 transition">
@@ -57,6 +65,31 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Subjects List (Mobile) -->
+    <div class="space-y-3 md:hidden">
+        {% for subject in subjects %}
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+                <span class="font-mono text-xs text-gray-500">#{{ subject.id }}</span>
+            </div>
+            <form method="POST" action="{{ url_for('admin.update_subject', id=subject.id) }}" class="space-y-3 mb-2">
+                <input type="text" name="name" value="{{ subject.name }}" required
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:border-purple-500 transition">
+                <button type="submit" class="w-full px-3 py-2 bg-blue-500/20 border border-blue-500/50 rounded-lg font-mono text-xs hover:bg-blue-500/30 transition">
+                    Save
+                </button>
+            </form>
+            <div class="grid grid-cols-1">
+                <form method="POST" action="{{ url_for('admin.delete_subject', id=subject.id) }}">
+                    <button type="submit" onclick="return confirm('Delete this subject?')" class="w-full px-3 py-2 bg-red-500/20 border border-red-500/50 rounded-lg font-mono text-xs hover:bg-red-500/30 transition">
+                        Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
