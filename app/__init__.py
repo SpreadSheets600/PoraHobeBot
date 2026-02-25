@@ -2,6 +2,8 @@ import os
 from typing import Optional
 
 from flask import Flask, flash, redirect, url_for
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Allow OAuth scope to change (e.g. Discord adding 'guilds.join') without raising an error
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
@@ -18,6 +20,8 @@ from .models import OAuth, User
 def create_app():
     app = Flask(__name__)
     app.config.from_object("config.Config")
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+    app.config.setdefault("PREFERRED_URL_SCHEME", "https")
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -44,7 +48,6 @@ def create_app():
             "https://www.googleapis.com/auth/userinfo.email",
             "openid",
         ],
-        redirect_url="/login/google/authorized",
         reprompt_consent=True,
     )
     app.register_blueprint(google_bp, url_prefix="/login")
@@ -53,7 +56,6 @@ def create_app():
         client_id=app.config["DISCORD_CLIENT_ID"],
         client_secret=app.config["DISCORD_CLIENT_SECRET"],
         scope=["identify", "email"],
-        redirect_url="/login/discord/authorized",
     )
     app.register_blueprint(discord_bp, url_prefix="/login")
 
@@ -169,5 +171,19 @@ def create_app():
     def oauth_error_handler(blueprint, error, error_description=None, error_uri=None):
         message = f"{blueprint.name.title()} OAuth error: {error_description or error}"
         app.logger.error(message)
+        flash(
+            "Login failed. Please try again. If it keeps happening, recheck OAuth callback URL and server time.",
+            "error",
+        )
+        return redirect(url_for("main.login"))
+
+    @app.errorhandler(InvalidGrantError)
+    def handle_invalid_grant(error):
+        app.logger.warning(f"OAuth invalid_grant: {error}")
+        flash(
+            "Google/Discord sign-in expired or mismatched. Please retry login once.",
+            "error",
+        )
+        return redirect(url_for("main.login"))
 
     return app
