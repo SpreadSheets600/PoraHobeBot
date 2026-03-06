@@ -1,4 +1,6 @@
-from flask import Blueprint, redirect, render_template, url_for
+from pathlib import Path
+
+from flask import Blueprint, redirect, render_template, send_from_directory, url_for
 from flask_login import current_user, login_required, logout_user
 from flask_dance.contrib.discord import discord
 from flask_dance.contrib.google import google
@@ -6,6 +8,7 @@ from flask_dance.contrib.google import google
 from app.models import Note
 
 main_bp = Blueprint("main", __name__)
+FAVICON_DIR = Path(__file__).resolve().parents[2] / "favicon"
 
 
 @main_bp.route("/")
@@ -58,3 +61,13 @@ def logout():
     logout_user()
 
     return redirect(url_for("main.login"))
+
+
+@main_bp.route("/favicon/<path:filename>")
+def favicon_files(filename):
+    return send_from_directory(FAVICON_DIR, filename)
+
+
+@main_bp.route("/favicon.ico")
+def favicon():
+    return send_from_directory(FAVICON_DIR, "favicon.ico")
